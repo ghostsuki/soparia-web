@@ -3,91 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ADM Soparia da Lê - Gestão de Estoque</title>
+    <title>Painel Administrativo - Soparia da Lê</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Shrikhand&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <style>
-        /* Estilos específicos para a área ADM */
-        body { background-color: #f7f7f7; }
-        .admin-container {
-            max-width: 800px;
-            margin: 50px auto;
-            padding: 30px;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        .admin-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #eee;
-        }
-        .admin-item:last-child {
-            border-bottom: none;
-        }
-        .admin-item input[type="number"],
-        .admin-item input[type="text"] { /* Incluindo input text */
-            padding: 5px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        .admin-item input[type="number"] {
-            width: 80px;
-            text-align: center;
-        }
-        .admin-item input[type="text"] {
-            flex-grow: 1; /* Permite que o campo de texto cresça */
-            margin-right: 10px;
-        }
-        .admin-item button {
-            background-color: #4CAF50; /* Verde */
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        #adicionar-form {
-            display: flex;
-            flex-wrap: wrap; /* Para quebrar linha em telas menores */
-            gap: 10px;
-            align-items: center;
-        }
-        #adicionar-form input {
-            flex-grow: 1;
-            min-width: 150px;
-        }
-        #adicionar-form button {
-            flex-grow: 0;
-        }
+        /* Estilos específicos do Admin */
+        body.admin-body { display: flex; min-height: 100vh; background: #f4f6f9; }
+        .sidebar { width: 250px; background: var(--cor-principal); color: white; padding: 20px; display: flex; flex-direction: column; }
+        .sidebar h2 { font-family: 'Shrikhand'; margin-bottom: 30px; text-align: center; }
+        .menu-admin button { width: 100%; padding: 15px; background: none; border: none; color: white; text-align: left; cursor: pointer; transition: 0.3s; font-size: 1.1rem; display: flex; gap: 10px; align-items: center; }
+        .menu-admin button:hover, .menu-admin button.active { background: rgba(255,255,255,0.2); border-radius: 8px; }
+        .admin-content { flex: 1; padding: 40px; overflow-y: auto; }
+        .admin-section-view { display: none; }
+        .admin-section-view.active { display: block; animation: fadeIn 0.3s; }
+        .card-dashboard { background: white; padding: 20px; border-radius: 10px; box-shadow: var(--sombra-sm); margin-bottom: 20px; }
+        .tabela-admin { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .tabela-admin th, .tabela-admin td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        .status-pendente { color: var(--cor-alerta); font-weight: bold; }
+        .status-aprovado { color: var(--cor-sucesso); font-weight: bold; }
+        .btn-acao { padding: 5px 10px; border-radius: 4px; cursor: pointer; border:none; color: white;}
+        .btn-editar { background: var(--cor-info); }
+        .btn-excluir { background: var(--cor-erro); }
+        .btn-aprovar { background: var(--cor-sucesso); }
+        .sold-out-box { background: #fee; color: #c00; padding: 5px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
     </style>
 </head>
-<body>
-    <header>
-        <h1>🛠️ Painel Administrativo Soparia da Lê</h1>
-        <a href="index.html" style="color: white;">Voltar para Loja</a>
-    </header>
+<body class="admin-body">
+    <aside class="sidebar">
+        <h2>Soparia Admin</h2>
+        <nav class="menu-admin">
+            <button class="nav-btn active" data-target="menu-geral"><i class="bi bi-list-ul"></i> Gerenciar Menu</button>
+            <button class="nav-btn" data-target="notificacoes"><i class="bi bi-bell"></i> Notificações (Pedidos)</button>
+            <button class="nav-btn" data-target="informacoes"><i class="bi bi-graph-up"></i> Informações</button>
+            <button class="nav-btn" data-target="usuarios"><i class="bi bi-people"></i> Usuários</button>
+            <button id="btn-sair-admin" style="margin-top: auto; background: #b71c1c;"><i class="bi bi-box-arrow-left"></i> Sair</button>
+        </nav>
+    </aside>
 
-    <div class="admin-container">
-        <h2>Gestão de Estoque</h2>
-        <p>Aqui você pode adicionar ou retirar itens do estoque.</p>
+    <main class="admin-content">
         
-        <div id="lista-estoque">
+        <section id="menu-geral" class="admin-section-view active">
+            <div class="card-dashboard">
+                <h3><i class="bi bi-pencil-square"></i> Editar Cardápio</h3>
+                <p>Gerencie produtos, preços e disponibilidade (Sold Out).</p>
+                <div class="form-group" style="margin-top: 20px; border: 1px dashed #ccc; padding: 15px;">
+                    <h4>Adicionar/Editar Item</h4>
+                    <input type="hidden" id="edit-id">
+                    <div class="endereco-grid">
+                        <input type="text" id="prod-nome" class="form-control" placeholder="Nome do Produto">
+                        <div class="endereco-linha">
+                            <input type="number" id="prod-preco" class="form-control" placeholder="Preço" step="0.01">
+                            <select id="prod-categoria" class="form-control">
+                                <option value="Sopas e Pratos">Sopas e Pratos</option>
+                                <option value="Bebidas">Bebidas</option>
+                                <option value="Sobremesas">Sobremesas</option>
+                            </select>
+                        </div>
+                        <input type="text" id="prod-img" class="form-control" placeholder="URL da Imagem">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" id="prod-soldout" style="width: 20px; height: 20px;">
+                            <strong>Marcar como "Sold Out" (Esgotado)</strong>
+                        </label>
+                        <button id="btn-salvar-produto" class="btn-finalizar">Salvar Produto</button>
+                    </div>
+                </div>
+                
+                <table class="tabela-admin">
+                    <thead><tr><th>Foto</th><th>Nome</th><th>Preço</th><th>Status</th><th>Ações</th></tr></thead>
+                    <tbody id="lista-produtos-admin"></tbody>
+                </table>
             </div>
+        </section>
 
-        <h3 style="margin-top: 30px;">Adicionar Novo Item</h3>
-        <form id="adicionar-form">
-            <input type="text" id="novo-nome" placeholder="Nome do Produto" required>
-            <input type="text" id="nova-categoria" placeholder="Categoria (Sopas, Bebidas, etc.)" required>
-            <input type="number" id="novo-preco" placeholder="Preço" min="0" step="0.01" required>
-            <input type="number" id="novo-estoque" placeholder="Estoque Inicial" min="0" required>
-            <input type="text" id="nova-imagem" placeholder="URL da Imagem (Ex: https://...)" required>
-            <button type="submit">Adicionar Produto</button>
-        </form>
-        <p id="mensagem-adm" style="color: green; margin-top: 10px;"></p>
-    </div>
+        <section id="notificacoes" class="admin-section-view">
+            <h3><i class="bi bi-bell-fill"></i> Pedidos Aguardando Aprovação</h3>
+            <div id="lista-pedidos-pendentes">
+                </div>
+        </section>
 
-    <script src="admin-script.js"></script>
+        <section id="informacoes" class="admin-section-view">
+            <h3><i class="bi bi-cash-coin"></i> Histórico de Vendas</h3>
+            <div class="card-dashboard">
+                <label>Selecione a Data:</label>
+                <input type="date" id="filtro-data" class="form-control" style="max-width: 200px;">
+                
+                <div style="margin-top: 20px; display: flex; gap: 20px;">
+                    <div style="background: var(--cor-secundaria); color: white; padding: 20px; flex: 1; border-radius: 8px;">
+                        <h4>Total Vendido</h4>
+                        <h2 id="dash-total">R$ 0,00</h2>
+                    </div>
+                    <div style="background: var(--cor-principal); color: white; padding: 20px; flex: 1; border-radius: 8px;">
+                        <h4>Itens Vendidos</h4>
+                        <h2 id="dash-qtd">0</h2>
+                    </div>
+                </div>
+
+                <h4 style="margin-top: 20px;">Detalhes do Dia</h4>
+                <ul id="dash-lista-vendas" class="lista-carrinho"></ul>
+            </div>
+        </section>
+
+        <section id="usuarios" class="admin-section-view">
+            <h3><i class="bi bi-people-fill"></i> Clientes Cadastrados</h3>
+            <div class="card-dashboard">
+                <table class="tabela-admin">
+                    <thead><tr><th>Nome</th><th>Email</th><th>Endereço</th><th>Tipo</th></tr></thead>
+                    <tbody id="lista-usuarios-admin"></tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+    
+    <div id="toast-container" class="toast-container"></div>
+    <script src="admin.js"></script>
 </body>
 </html>
