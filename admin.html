@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADM Soparia da Lê - Gestão de Estoque</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Estilos específicos para a área ADM */
+        body { background-color: #f7f7f7; }
+        .admin-container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 30px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .admin-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .admin-item:last-child {
+            border-bottom: none;
+        }
+        .admin-item input[type="number"],
+        .admin-item input[type="text"] { /* Incluindo input text */
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .admin-item input[type="number"] {
+            width: 80px;
+            text-align: center;
+        }
+        .admin-item input[type="text"] {
+            flex-grow: 1; /* Permite que o campo de texto cresça */
+            margin-right: 10px;
+        }
+        .admin-item button {
+            background-color: #4CAF50; /* Verde */
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #adicionar-form {
+            display: flex;
+            flex-wrap: wrap; /* Para quebrar linha em telas menores */
+            gap: 10px;
+            align-items: center;
+        }
+        #adicionar-form input {
+            flex-grow: 1;
+            min-width: 150px;
+        }
+        #adicionar-form button {
+            flex-grow: 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🛠️ Painel Administrativo Soparia da Lê</h1>
+        <a href="index.html" style="color: white;">Voltar para Loja</a>
+    </header>
+
+    <div class="admin-container">
+        <h2>Gestão de Estoque</h2>
+        <p>Aqui você pode adicionar ou retirar itens do estoque.</p>
+        
+        <div id="lista-estoque">
+            </div>
+
+        <h3 style="margin-top: 30px;">Adicionar Novo Item</h3>
+        <form id="adicionar-form">
+            <input type="text" id="novo-nome" placeholder="Nome do Produto" required>
+            <input type="text" id="nova-categoria" placeholder="Categoria (Sopas, Bebidas, etc.)" required>
+            <input type="number" id="novo-preco" placeholder="Preço" min="0" step="0.01" required>
+            <input type="number" id="novo-estoque" placeholder="Estoque Inicial" min="0" required>
+            <input type="text" id="nova-imagem" placeholder="URL da Imagem (Ex: https://...)" required>
+            <button type="submit">Adicionar Produto</button>
+        </form>
+        <p id="mensagem-adm" style="color: green; margin-top: 10px;"></p>
+    </div>
+
+    <script src="admin-script.js"></script>
+</body>
+</html>

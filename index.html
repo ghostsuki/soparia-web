@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Soparia da Lê - Peça sopas, pratos, bebidas e sobremesas deliciosas online com entrega rápida">
+    <meta name="keywords" content="soparia, restaurante, delivery, comida caseira, sopas">
+    <meta name="author" content="Soparia da Lê">
+    
+    <title>Soparia da Lê - Peça Agora Online!</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Shrikhand&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="header-principal" role="banner">
+        <div class="header-container">
+            <h1 class="logo">
+                <i class="bi bi-bowl-hot-fill"></i>
+                Soparia da Lê
+            </h1>
+            
+            <nav class="header-nav" role="navigation" aria-label="Navegação principal">
+                <button id="btn-login-perfil" class="btn-carrinho" style="margin-right: 10px;">
+                    <i class="bi bi-person-circle"></i>
+                    <span id="texto-login">Entrar</span>
+                </button>
+
+                <button 
+                    id="carrinho-btn" 
+                    class="btn-carrinho"
+                    aria-label="Abrir carrinho de compras"
+                    aria-expanded="false"
+                    aria-controls="modal-carrinho">
+                    <i class="bi bi-cart3"></i>
+                    <span class="carrinho-texto">Carrinho</span>
+                    <span class="badge-carrinho" id="contador-carrinho" aria-live="polite">0</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content" role="main">
+        <section class="hero-section" aria-labelledby="hero-titulo">
+            <div class="carousel-bg">
+                <div class="carousel-overlay"></div>
+                <img src="https://via.placeholder.com/1920x600/8B4513/FFFFFF?text=Ambiente+Aconchegante" alt="Foto do Restaurante" class="carousel-item active">
+                <img src="https://via.placeholder.com/1920x600/A0522D/FFFFFF?text=Sopas+Deliciosas" alt="Nossas Sopas" class="carousel-item">
+                <img src="https://via.placeholder.com/1920x600/D2691E/FFFFFF?text=Ingredientes+Frescos" alt="Ingredientes Frescos" class="carousel-item">
+            </div>
+
+            <div class="hero-container">
+                <h2 id="hero-titulo" class="hero-titulo">Bem-vindo à Soparia da Lê</h2>
+                <p class="hero-subtitulo">Sabor caseiro com entrega rápida</p>
+            </div>
+        </section>
+
+        <section id="admin-panel" class="admin-section hidden">
+            <div class="container">
+                <h2 class="section-titulo"><i class="bi bi-gear-fill"></i> Painel Administrativo</h2>
+                <div class="admin-controls">
+                    <p>Gerencie o estoque e preços dos produtos abaixo.</p>
+                    <button id="btn-salvar-estoque" class="btn-finalizar">Salvar Alterações</button>
+                </div>
+                <div id="admin-grid" class="admin-grid">
+                    </div>
+            </div>
+        </section>
+
+        <section id="menu" class="menu-section" aria-labelledby="menu-titulo">
+            <div class="container">
+                <h2 id="menu-titulo" class="section-titulo">
+                    <i class="bi bi-list-stars"></i>
+                    Nosso Menu Quentinho
+                </h2>
+                <div id="menu-content" class="menu-grid" role="list"></div>
+            </div>
+        </section>
+    </main>
+
+    <aside id="modal-login" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-conteudo">
+            <header class="modal-header">
+                <h3 class="modal-titulo"><i class="bi bi-person-lines-fill"></i> Acessar Conta</h3>
+                <button class="fechar-btn" data-modal="modal-login"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="modal-body">
+                <div class="auth-tabs">
+                    <button class="tab-btn active" data-tab="login">Login</button>
+                    <button class="tab-btn" data-tab="cadastro">Cadastro</button>
+                </div>
+
+                <form id="form-login" class="auth-form active">
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input type="email" id="login-email" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Senha</label>
+                        <input type="password" id="login-senha" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn-finalizar">Entrar</button>
+                </form>
+
+                <form id="form-cadastro" class="auth-form">
+                    <div class="form-group">
+                        <label class="form-label">Nome Completo</label>
+                        <input type="text" id="cad-nome" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input type="email" id="cad-email" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Senha (Mín. 8 caracteres)</label>
+                        <input type="password" id="cad-senha" class="form-control" required minlength="8">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Endereço Padrão (Opcional)</label>
+                        <textarea id="cad-endereco" class="form-control" placeholder="Rua, Bairro, Número..."></textarea>
+                    </div>
+                    <button type="submit" class="btn-finalizar">Criar Conta</button>
+                </form>
+            </div>
+        </div>
+    </aside>
+
+    <aside id="modal-perfil" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-conteudo">
+            <header class="modal-header">
+                <h3 class="modal-titulo"><i class="bi bi-person-badge"></i> Meu Perfil</h3>
+                <button class="fechar-btn" data-modal="modal-perfil"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="modal-body">
+                <div class="perfil-info">
+                    <p><strong>Nome:</strong> <span id="perfil-nome"></span></p>
+                    <p><strong>Email:</strong> <span id="perfil-email"></span></p>
+                    <p><strong>Tipo:</strong> <span id="perfil-tipo"></span></p>
+                </div>
+                <hr>
+                <div class="form-group">
+                    <label class="form-label">Atualizar Endereço</label>
+                    <textarea id="perfil-endereco" class="form-control"></textarea>
+                </div>
+                <button id="btn-atualizar-perfil" class="btn-finalizar" style="margin-bottom: 10px;">Salvar Dados</button>
+                <button id="btn-logout" class="btn-remover" style="width: 100%; width: 100%; background: #dc3545; color: white;">Sair da Conta</button>
+            </div>
+        </div>
+    </aside>
+
+    <aside id="modal-carrinho" class="modal" role="dialog" aria-hidden="true">
+        <div class="modal-overlay"></div>
+        <div class="modal-conteudo" role="document">
+            <header class="modal-header">
+                <h3 id="modal-carrinho-titulo" class="modal-titulo">
+                    <i class="bi bi-cart-check"></i> Seu Pedido
+                </h3>
+                <button class="fechar-btn" aria-label="Fechar carrinho" data-modal="modal-carrinho"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="modal-body">
+                <ul id="lista-carrinho" class="lista-carrinho" role="list"></ul>
+                <div class="carrinho-total">
+                    <span class="total-label">Total:</span>
+                    <span class="total-valor">R$ <span id="total-carrinho">0,00</span></span>
+                </div>
+                <form id="checkout-form" class="checkout-form" novalidate>
+                    <h4 class="form-titulo"><i class="bi bi-credit-card"></i> Finalizar Pedido</h4>
+                    
+                    <div class="form-group">
+                        <label class="form-label"><i class="bi bi-truck"></i> Tipo de Recebimento</label>
+                        <div class="opcoes-entrega">
+                            <label class="radio-opcao">
+                                <input type="radio" name="tipo_entrega" value="entrega" checked>
+                                <span>Entrega (+ R$ 3,00)</span>
+                            </label>
+                            <label class="radio-opcao">
+                                <input type="radio" name="tipo_entrega" value="retirada">
+                                <span>Retirada no Balcão</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="metodo-pagamento" class="form-label"><i class="bi bi-wallet2"></i> Método de Pagamento</label>
+                        <select id="metodo-pagamento" class="form-control" required>
+                            <option value="">Selecione o método</option>
+                            <option value="pix">PIX</option>
+                            <option value="dinheiro">Dinheiro</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email-cliente" class="form-label"><i class="bi bi-envelope"></i> E-mail</label>
+                        <input type="email" id="email-cliente" class="form-control" required>
+                    </div>
+
+                    <div class="form-group" id="grupo-endereco">
+                        <label class="form-label"><i class="bi bi-geo-alt"></i> Endereço de Entrega</label>
+                        
+                        <div id="opcao-endereco-salvo" class="opcoes-entrega" style="margin-bottom: 10px; display: none;">
+                            <label class="radio-opcao">
+                                <input type="radio" name="origem_endereco" value="cadastrado" checked>
+                                <span>Usar endereço do perfil</span>
+                            </label>
+                            <label class="radio-opcao">
+                                <input type="radio" name="origem_endereco" value="novo">
+                                <span>Outro endereço</span>
+                            </label>
+                        </div>
+                        <p id="texto-endereco-salvo" style="font-size: 0.9rem; color: #666; margin-bottom: 10px; display:none; background: #f9f9f9; padding: 5px; border-radius: 4px;"></p>
+
+                        <div class="endereco-grid" id="form-novo-endereco">
+                            <input type="text" id="endereco-rua" class="form-control" placeholder="Rua / Avenida" required>
+                            <div class="endereco-linha">
+                                <input type="text" id="endereco-numero" class="form-control" placeholder="Nº" required style="flex: 1;">
+                                <input type="text" id="endereco-bairro" class="form-control" placeholder="Bairro" required style="flex: 2;">
+                            </div>
+                            <input type="text" id="endereco-complemento" class="form-control" placeholder="Complemento">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-finalizar"><i class="bi bi-check-circle"></i> Finalizar Compra</button>
+                </form>
+            </div>
+        </div>
+    </aside>
+
+    <aside id="modal-pix" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-conteudo">
+            <header class="modal-header">
+                <h3 class="modal-titulo"><i class="bi bi-qr-code"></i> Pagamento via PIX</h3>
+                <button class="fechar-btn" data-modal="modal-pix"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="modal-body text-center">
+                <p>Escaneie o QR Code ou copie o código abaixo:</p>
+                
+                <img src="assets/qrcode.jpg" alt="QR Code Pix" class="img-pix-qr">
+                
+                <div class="pix-copia-cola-box">
+                    <textarea id="pix-code" readonly>00020101021126420014br.gov.bcb.pix0120laugustg91@gmail.com5204000053039865802BR5918LUIZ A N GUIMARAES6011ITACOATIARA62070503***6304B046</textarea>
+                    <button id="btn-copiar-pix" class="btn-mapa" style="width:100%; justify-content:center; margin-top:5px;"><i class="bi bi-clipboard"></i> Copiar Código</button>
+                </div>
+
+                <hr>
+                
+                <div class="form-group" style="text-align: left;">
+                    <label class="form-label">Anexar Comprovante</label>
+                    <input type="file" id="comprovante-upload" class="form-control" accept="image/*,application/pdf">
+                </div>
+
+                <button id="btn-enviar-comprovante" class="btn-finalizar">Enviar Comprovante e Finalizar</button>
+            </div>
+        </div>
+    </aside>
+
+    <aside id="modal-confirmacao" class="modal" role="dialog" aria-hidden="true">
+        <div class="modal-overlay"></div>
+        <div class="modal-conteudo modal-confirmacao">
+            <header class="modal-header">
+                <button class="fechar-btn" data-modal="modal-confirmacao"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="modal-body text-center">
+                <div class="confirmacao-icone"><i class="bi bi-check-circle-fill"></i></div>
+                <h3 class="confirmacao-titulo">Pedido Recebido!</h3>
+                <p class="confirmacao-texto">Seu pedido e o comprovante foram enviados. Aguarde a confirmação.</p>
+                <button class="btn-voltar" data-modal="modal-confirmacao"><i class="bi bi-arrow-left"></i> Voltar ao Menu</button>
+            </div>
+        </div>
+    </aside>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <section class="localizacao-section">
+        <div class="container">
+            <h2 class="section-titulo"><i class="bi bi-geo-alt-fill"></i> Onde Estamos</h2>
+            <p class="endereco-texto">Rua Vereador Adolfo Olimpio, 3351 - Bairro Araújo Costa, Itacoatiara - AM</p>
+            <a href="https://www.google.com/maps/search/?api=1&query=Rua+Vereador+Adolfo+Olimpio+3351+Bairro+Araujo+Costa+Itacoatiara" target="_blank" class="mapa-link">
+                <div class="mapa-container">
+                    <iframe src="https://maps.google.com/maps?q=Rua%20Vereador%20Adolfo%20Olimpio%203351%20Itacoatiara&t=&z=15&ie=UTF8&iwloc=&output=embed" width="100%" height="300" style="border:0; pointer-events: none;" allowfullscreen="" loading="lazy"></iframe>
+                    <div class="mapa-overlay"><button class="btn-mapa"><i class="bi bi-map"></i> Abrir no Google Maps</button></div>
+                </div>
+            </a>
+        </div>
+    </section>
+
+    <footer class="footer-principal" role="contentinfo">
+        <div class="footer-container">
+            <p><i class="bi bi-c-circle"></i> 2024 Soparia da Lê</p>
+            <p class="footer-contato"><i class="bi bi-telephone"></i> (11) 98765-4321 <span class="separador">|</span> <i class="bi bi-envelope"></i> contato@sopariadale.com.br</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
