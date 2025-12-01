@@ -1,18 +1,15 @@
 // --- CONFIGURAÇÃO INICIAL E DADOS ---
-
-// Carrega Estoque (Sincronizado com Admin)
 let estoque = JSON.parse(localStorage.getItem('soparia_estoque')) || {
-    'sopa-frango': { nome: 'Sopa de Frango com Legumes', categoria: 'Sopas e Pratos', preco: 25.00, esgotado: false, imagem: 'assets/sopa1.jpg' },
-    'sopa-carne': { nome: 'Sopa de Carne com Mandioca', categoria: 'Sopas e Pratos', preco: 28.00, esgotado: false, imagem: 'assets/sopa2.jpg' },
-    'sopa-mocoto': { nome: 'Sopa de Mocotó Especial', categoria: 'Sopas e Pratos', preco: 35.00, esgotado: false, imagem: 'assets/sopa3.jpg' },
-    'lasanha': { nome: 'Lasanha à Bolonhesa (Prato)', categoria: 'Sopas e Pratos', preco: 30.00, esgotado: false, imagem: 'assets/lasanha.jpg' },
-    'suco': { nome: 'Suco Natural (Laranja/Abacaxi)', categoria: 'Bebidas', preco: 8.00, esgotado: false, imagem: 'assets/suco.jpg' },
-    'refri': { nome: 'Refrigerante Lata (Diversos)', categoria: 'Bebidas', preco: 7.00, esgotado: false, imagem: 'assets/refri.jpg' },
-    'torta': { nome: 'Fatia de Torta Holandesa', categoria: 'Sobremesas', preco: 12.00, esgotado: false, imagem: 'assets/torta.jpg' },
-    'bolo': { nome: 'Bolo de Chocolate Vulcão', categoria: 'Sobremesas', preco: 15.00, esgotado: false, imagem: 'assets/bolo.jpg' }
+    'sopa-frango': { nome: 'Sopa de Frango com Legumes', categoria: 'Sopas e Pratos', preco: 25.00, esgotado: false, imagem: 'https://via.placeholder.com/300x180/8B4513/FFFFFF?text=Sopa+Frango' },
+    'sopa-carne': { nome: 'Sopa de Carne com Mandioca', categoria: 'Sopas e Pratos', preco: 28.00, esgotado: false, imagem: 'https://via.placeholder.com/300x180/A0522D/FFFFFF?text=Sopa+Carne' },
+    'sopa-mocoto': { nome: 'Sopa de Mocotó Especial', categoria: 'Sopas e Pratos', preco: 35.00, esgotado: false, imagem: 'https://via.placeholder.com/300x180/B0C4DE/FFFFFF?text=Sopa+Mocotó' },
+    'lasanha': { nome: 'Lasanha à Bolonhesa (Prato)', categoria: 'Sopas e Pratos', preco: 30.00, esgotado: false, imagem: 'https://via.placeholder.com/300x180/CD5C5C/FFFFFF?text=Lasanha' },
+    'suco': { nome: 'Suco Natural (Laranja/Abacaxi)', categoria: 'Bebidas', preco: 8.00, esgotado: false, imagem: 'https://via.placeholder.com/300x180/FFA500/FFFFFF?text=Suco' },
+    'refri': { nome: 'Refrigerante Lata (Diversos)', categoria: 'Bebidas', preco: 7.00, esgotado: false, imagem: 'https://via.placeholder.com/300x180/00CED1/FFFFFF?text=Refrigerante' },
+    'torta': { nome: 'Fatia de Torta Holandesa', categoria: 'Sobremesas', preco: 12.00, esgotado: false, imagem: 'https://via.placeholder.com/300x180/D2B48C/FFFFFF?text=Torta' },
+    'bolo': { nome: 'Bolo de Chocolate Vulcão', categoria: 'Sobremesas', preco: 15.00, esgotado: false, imagem: 'https://via.placeholder.com/300x180/8B4513/FFFFFF?text=Bolo' }
 };
 
-// Dados de Usuários
 let usuarios = JSON.parse(localStorage.getItem('soparia_usuarios')) || [
     { nome: 'Administrador', email: 'adm@soparia.com', senha: '08032004', tipo: 'adm', endereco: '' }
 ];
@@ -21,8 +18,8 @@ let usuarioAtual = JSON.parse(localStorage.getItem('soparia_sessao')) || null;
 let carrinho = [];
 const TAXA_ENTREGA = 3.00;
 
-// Seleção de Elementos do DOM
-const menuSection = document.getElementById('menu');
+// Elementos
+const menuSection = document.getElementById('menu-content');
 const listaCarrinho = document.getElementById('lista-carrinho');
 const totalCarrinhoSpan = document.getElementById('total-carrinho');
 const contadorCarrinhoSpan = document.getElementById('contador-carrinho');
@@ -33,8 +30,7 @@ const toastContainer = document.getElementById('toast-container');
 const btnLoginPerfil = document.getElementById('btn-login-perfil');
 const textoLogin = document.getElementById('texto-login');
 
-// --- FUNÇÕES DE SISTEMA (AUTH/DADOS) ---
-
+// --- SISTEMA DE USUÁRIOS ---
 function salvarDados() {
     localStorage.setItem('soparia_estoque', JSON.stringify(estoque));
     localStorage.setItem('soparia_usuarios', JSON.stringify(usuarios));
@@ -45,27 +41,20 @@ function salvarDados() {
 function verificarSessao() {
     if (usuarioAtual) {
         textoLogin.textContent = `Olá, ${usuarioAtual.nome.split(' ')[0]}`;
-        
-        // Se for ADM, redireciona o comportamento do botão
         if (usuarioAtual.tipo === 'adm') {
             btnLoginPerfil.onclick = () => window.location.href = 'admin.html';
             textoLogin.textContent = "Painel Admin";
             return;
         } else {
-            // Se for cliente, abre modal de perfil
             btnLoginPerfil.onclick = () => {
                 document.getElementById('perfil-nome').textContent = usuarioAtual.nome;
                 document.getElementById('perfil-email').textContent = usuarioAtual.email;
                 document.getElementById('perfil-tipo').textContent = "Cliente";
-                document.getElementById('perfil-endereco').value = usuarioAtual.endereco || '';
+                document.getElementById('perfil-endereco').value = usuarioAtual.endereco || 'Sem endereço salvo.';
                 document.getElementById('modal-perfil').style.display = 'block';
             };
         }
-        
-        // Preenche e-mail no checkout se existir o campo
-        const inputEmail = document.getElementById('email-cliente');
-        if (inputEmail) inputEmail.value = usuarioAtual.email;
-        
+        if (document.getElementById('email-cliente')) document.getElementById('email-cliente').value = usuarioAtual.email;
     } else {
         textoLogin.textContent = 'Entrar';
         btnLoginPerfil.onclick = () => document.getElementById('modal-login').style.display = 'block';
@@ -77,10 +66,8 @@ function login(email, senha) {
     if (user) {
         usuarioAtual = user;
         salvarDados();
-        
-        if (user.tipo === 'adm') {
-            window.location.href = 'admin.html';
-        } else {
+        if (user.tipo === 'adm') window.location.href = 'admin.html';
+        else {
             verificarSessao();
             document.getElementById('modal-login').style.display = 'none';
             mostrarNotificacao(`Bem-vindo, ${user.nome}!`, 'sucesso');
@@ -90,18 +77,14 @@ function login(email, senha) {
     }
 }
 
-function cadastrar(nome, email, senha, endereco) {
-    if (usuarios.find(u => u.email === email)) {
-        return mostrarNotificacao('E-mail já cadastrado.', 'erro');
-    }
-    if (senha.length < 8) {
-        return mostrarNotificacao('A senha deve ter no mínimo 8 caracteres.', 'erro');
-    }
+function cadastrar(nome, email, senha, rua, num, bairro, comp) {
+    if (usuarios.find(u => u.email === email)) return mostrarNotificacao('E-mail já cadastrado.', 'erro');
+    if (senha.length < 8) return mostrarNotificacao('A senha deve ter no mínimo 8 caracteres.', 'erro');
 
-    const novoUser = { nome, email, senha, tipo: 'cliente', endereco };
+    const enderecoCompleto = `${rua}, ${num} - ${bairro} ${comp ? '('+comp+')' : ''}`;
+    const novoUser = { nome, email, senha, tipo: 'cliente', endereco: enderecoCompleto };
     usuarios.push(novoUser);
     usuarioAtual = novoUser;
-    
     salvarDados();
     verificarSessao();
     document.getElementById('modal-login').style.display = 'none';
@@ -113,67 +96,69 @@ function logout() {
     salvarDados();
     verificarSessao();
     document.getElementById('modal-perfil').style.display = 'none';
-    
-    // Limpa campos
-    const formCheckout = document.getElementById('checkout-form');
-    if(formCheckout) formCheckout.reset();
-    
+    const form = document.getElementById('checkout-form');
+    if(form) form.reset();
     mostrarNotificacao('Você saiu da conta.', 'info');
 }
 
-// --- RENDERIZAÇÃO DO MENU ---
-
+// --- RENDERIZAR MENU (CORRIGIDO PARA SEÇÕES E NAVEGAÇÃO) ---
 function renderizarMenu() {
-    // Agrupa por categoria
+    menuSection.innerHTML = '';
+    const navContainer = document.getElementById('menu-nav');
+    if(navContainer) navContainer.innerHTML = ''; 
+
     const menuAgrupado = {};
     for (const [id, item] of Object.entries(estoque)) {
         if (!menuAgrupado[item.categoria]) menuAgrupado[item.categoria] = [];
         menuAgrupado[item.categoria].push({ id, ...item });
     }
 
-    menuSection.innerHTML = '';
-    const container = document.createElement('div');
-    container.classList.add('container');
-    menuSection.appendChild(container);
-    
-    // Título Principal
-    const h2 = document.createElement('h2');
-    h2.className = 'section-titulo';
-    h2.innerHTML = '<i class="bi bi-list-stars"></i> Nosso Menu';
-    container.appendChild(h2);
-
     for (const [categoria, itens] of Object.entries(menuAgrupado)) {
+        // 1. Cria ID para âncora
+        const catId = 'cat-' + categoria.replace(/\s+/g, '-').toLowerCase();
+
+        // 2. Cria Botão de Navegação
+        if(navContainer) {
+            const btn = document.createElement('button');
+            btn.className = 'cat-btn';
+            btn.textContent = categoria;
+            btn.onclick = () => document.getElementById(catId).scrollIntoView({ behavior: 'smooth', block: 'center' });
+            navContainer.appendChild(btn);
+        }
+
+        // 3. Título
         const h3 = document.createElement('h3');
         h3.className = 'categoria-titulo';
+        h3.id = catId;
         h3.textContent = categoria;
-        container.appendChild(h3);
+        menuSection.appendChild(h3);
 
+        // 4. Grid da Categoria
         const grid = document.createElement('div');
-        grid.classList.add('menu-grid');
-        container.appendChild(grid);
+        grid.className = 'menu-grid';
+        menuSection.appendChild(grid);
 
         itens.forEach(item => {
             const card = document.createElement('div');
-            card.classList.add('produto-card');
-            
-            // Lógica "Sold Out"
+            card.className = 'produto-card';
             const isSoldOut = item.esgotado === true;
-            const btnTexto = isSoldOut ? 'SOLD OUT' : '➕ Adicionar';
-            const classeStatus = isSoldOut ? 'esgotado' : 'disponivel';
-            const statusTexto = isSoldOut ? 'Esgotado' : 'Disponível';
             
             card.innerHTML = `
-                <img src="${item.imagem}" class="produto-imagem" style="${isSoldOut ? 'filter: grayscale(100%);' : ''}" alt="${item.nome}">
+                <img src="${item.imagem}" class="produto-imagem" style="${isSoldOut ? 'filter: grayscale(100%); opacity:0.7' : ''}" alt="${item.nome}">
                 <div class="produto-info">
-                    <h4 class="produto-nome">${item.nome}</h4>
-                    <p class="produto-descricao">Delicioso item feito com carinho.</p>
-                    <div class="produto-footer">
-                        <span class="produto-preco">R$ ${item.preco.toFixed(2)}</span>
-                        <span class="produto-estoque ${classeStatus}">${statusTexto}</span>
+                    <div>
+                        <h4 class="produto-nome">${item.nome}</h4>
+                        <p class="produto-descricao">Delicioso item do nosso cardápio.</p>
                     </div>
-                    <button class="adicionar-btn" data-id="${item.id}" ${isSoldOut ? 'disabled' : ''}>
-                        ${btnTexto}
-                    </button>
+                    <div>
+                        <div class="produto-footer">
+                            <span class="produto-preco">R$ ${item.preco.toFixed(2)}</span>
+                            <span class="produto-estoque ${isSoldOut ? 'esgotado' : 'disponivel'}">${isSoldOut ? 'Esgotado' : 'Disponível'}</span>
+                        </div>
+                        <button class="adicionar-btn" data-id="${item.id}" ${isSoldOut ? 'disabled' : ''}>
+                            ${isSoldOut ? 'SOLD OUT' : '➕ Adicionar'}
+                        </button>
+                    </div>
                 </div>
             `;
             grid.appendChild(card);
@@ -181,68 +166,43 @@ function renderizarMenu() {
     }
 }
 
-// --- CARRINHO E CHECKOUT ---
-
+// --- CARRINHO ---
 function atualizarCarrinho() {
     listaCarrinho.innerHTML = '';
-    
-    // Verifica tipo de entrega selecionado no form
     const inputEntrega = document.querySelector('input[name="tipo_entrega"]:checked');
     const tipoEntrega = inputEntrega ? inputEntrega.value : 'entrega';
-    
     let total = 0;
     let totalItens = 0;
 
-    if (carrinho.length === 0) {
-        listaCarrinho.innerHTML = '<li style="text-align:center; padding:20px;">O carrinho está vazio.</li>';
-    } else {
+    if (carrinho.length === 0) listaCarrinho.innerHTML = '<li style="text-align:center; padding:20px;">O carrinho está vazio.</li>';
+    else {
         carrinho.forEach(item => {
             const li = document.createElement('li');
-            li.classList.add('carrinho-item');
+            li.className = 'carrinho-item';
             li.innerHTML = `
-                <div class="item-info">
-                    <div class="item-nome">${item.quantidade}x ${item.nome}</div>
-                </div>
+                <div class="item-info"><div class="item-nome">${item.quantidade}x ${item.nome}</div></div>
                 <div class="item-acoes">
                     <span class="item-preco">R$ ${(item.preco * item.quantidade).toFixed(2)}</span>
                     <button class="btn-remover" data-id="${item.id}"><i class="bi bi-trash"></i></button>
                 </div>`;
             listaCarrinho.appendChild(li);
-            
             total += item.preco * item.quantidade;
             totalItens += item.quantidade;
         });
     }
 
-    // Adiciona taxa se for entrega e tiver itens
-    if (tipoEntrega === 'entrega' && total > 0) {
-        total += TAXA_ENTREGA;
-    }
-
+    if (tipoEntrega === 'entrega' && total > 0) total += TAXA_ENTREGA;
     totalCarrinhoSpan.textContent = total.toFixed(2);
     contadorCarrinhoSpan.textContent = totalItens;
 }
 
 function adicionarAoCarrinho(produtoId) {
     const produto = estoque[produtoId];
-    
-    // Verifica se existe e se não está esgotado
-    if (!produto || produto.esgotado) {
-        return mostrarNotificacao('Item indisponível no momento.', 'erro');
-    }
+    if (!produto || produto.esgotado) return mostrarNotificacao('Item indisponível.', 'erro');
 
     const itemExistente = carrinho.find(item => item.id === produtoId);
-    
-    if (itemExistente) {
-        itemExistente.quantidade++;
-    } else {
-        carrinho.push({ 
-            id: produtoId, 
-            nome: produto.nome, 
-            preco: produto.preco, 
-            quantidade: 1 
-        });
-    }
+    if (itemExistente) itemExistente.quantidade++;
+    else carrinho.push({ id: produtoId, nome: produto.nome, preco: produto.preco, quantidade: 1 });
     
     atualizarCarrinho();
     mostrarNotificacao(`${produto.nome} adicionado!`, 'sucesso');
@@ -253,109 +213,74 @@ function removerDoCarrinho(produtoId) {
     atualizarCarrinho();
 }
 
+// --- CHECKOUT ---
 function iniciarProcessoCheckout(e) {
     e.preventDefault();
-    
-    // 1. Bloqueio de Login
     if (!usuarioAtual) {
         modalCarrinho.style.display = 'none';
         document.getElementById('modal-login').style.display = 'block';
-        return mostrarNotificacao('Faça login para finalizar a compra.', 'erro');
+        return mostrarNotificacao('Faça login para continuar.', 'erro');
     }
+    if (carrinho.length === 0) return mostrarNotificacao('Carrinho vazio!', 'info');
 
-    // 2. Carrinho Vazio
-    if (carrinho.length === 0) {
-        return mostrarNotificacao('Seu carrinho está vazio!', 'info');
-    }
-
-    // 3. Método de Pagamento (Define fluxo)
     const metodoPagamento = document.getElementById('metodo-pagamento').value;
-    
-    if (!metodoPagamento) {
-        return mostrarNotificacao('Selecione um método de pagamento.', 'erro');
-    }
-
-    // Validação de Endereço (se for entrega)
     const inputEntrega = document.querySelector('input[name="tipo_entrega"]:checked').value;
     const origemEndereco = document.querySelector('input[name="origem_endereco"]:checked')?.value || 'novo';
 
-    // Se escolheu endereço cadastrado, valida se existe
     if (inputEntrega === 'entrega' && origemEndereco === 'cadastrado') {
-        if (!usuarioAtual.endereco || usuarioAtual.endereco.trim() === '') {
-            mostrarNotificacao('Perfil sem endereço. Escolha "Outro endereço".', 'erro');
-            return;
+        if (!usuarioAtual.endereco || usuarioAtual.endereco.length < 5) {
+            return mostrarNotificacao('Seu perfil não tem endereço. Escolha "Outro endereço".', 'erro');
         }
     }
-
-    // Validação do FormHTML (apenas se for novo endereço)
     if (inputEntrega === 'entrega' && origemEndereco === 'novo') {
-        if (!document.getElementById('checkout-form').checkValidity()) {
-            return mostrarNotificacao('Preencha o endereço completo.', 'erro');
-        }
+        if (!document.getElementById('checkout-form').checkValidity()) return mostrarNotificacao('Preencha o endereço completo.', 'erro');
     }
 
-    // FLUXO: PIX (Abre modal especial)
     if (metodoPagamento === 'pix') {
         modalCarrinho.style.display = 'none';
         modalPix.style.display = 'block';
-        return;
+    } else {
+        finalizarPedidoReal('Dinheiro');
     }
-
-    // FLUXO: DINHEIRO (Finaliza direto)
-    finalizarPedidoReal('Dinheiro');
 }
 
-function finalizarPedidoReal(metodoPagamento) {
-    // Captura dados do endereço para salvar no pedido
+function finalizarPedidoReal(metodo) {
     const inputEntrega = document.querySelector('input[name="tipo_entrega"]:checked').value;
-    const origemEndereco = document.querySelector('input[name="origem_endereco"]:checked')?.value || 'novo';
-    
-    let enderecoFinal = 'Retirada no Balcão';
-    
+    const origem = document.querySelector('input[name="origem_endereco"]:checked')?.value || 'novo';
+    let endFinal = 'Retirada no Balcão';
+
     if (inputEntrega === 'entrega') {
-        if (origemEndereco === 'cadastrado') {
-            enderecoFinal = usuarioAtual.endereco;
-        } else {
-            const rua = document.getElementById('endereco-rua').value;
-            const numero = document.getElementById('endereco-numero').value;
-            const bairro = document.getElementById('endereco-bairro').value;
-            const comp = document.getElementById('endereco-complemento').value;
-            enderecoFinal = `${rua}, ${numero} - ${bairro} ${comp ? '('+comp+')' : ''}`;
+        if (origem === 'cadastrado') endFinal = usuarioAtual.endereco;
+        else {
+            const r = document.getElementById('endereco-rua').value;
+            const n = document.getElementById('endereco-numero').value;
+            const b = document.getElementById('endereco-bairro').value;
+            const c = document.getElementById('endereco-complemento').value;
+            endFinal = `${r}, ${n} - ${b} ${c ? '('+c+')' : ''}`;
         }
     }
 
-    // Objeto do Pedido
     const pedido = {
         cliente: usuarioAtual.nome,
         email: usuarioAtual.email,
-        itens: [...carrinho], // Cópia do array
+        itens: [...carrinho],
         total: parseFloat(totalCarrinhoSpan.textContent),
-        metodo: metodoPagamento,
-        endereco: enderecoFinal,
+        metodo: metodo,
+        endereco: endFinal,
         data: new Date().toISOString()
     };
 
-    // Salva em "Pedidos Pendentes" (Simulando envio pro servidor)
     let pendentes = JSON.parse(localStorage.getItem('soparia_pedidos_pendentes')) || [];
     pendentes.push(pedido);
     localStorage.setItem('soparia_pedidos_pendentes', JSON.stringify(pendentes));
 
-    // Reset total
     carrinho = [];
     atualizarCarrinho();
-    
-    // Fecha modais
     modalCarrinho.style.display = 'none';
     modalPix.style.display = 'none';
-    
-    // Abre confirmação
     modalConfirmacao.style.display = 'block';
-    
-    // Limpa form
     document.getElementById('checkout-form').reset();
 }
-
-// --- HELPERS E UI ---
 
 function mostrarNotificacao(msg, tipo = 'sucesso') {
     const icones = { sucesso: 'bi-check-circle-fill', erro: 'bi-x-circle-fill', info: 'bi-info-circle-fill' };
@@ -363,7 +288,6 @@ function mostrarNotificacao(msg, tipo = 'sucesso') {
     toast.className = `toast ${tipo}`;
     toast.innerHTML = `<i class="bi ${icones[tipo]}"></i><span>${msg}</span>`;
     toastContainer.appendChild(toast);
-    
     setTimeout(() => {
         toast.style.animation = 'fadeOutRight 0.5s forwards';
         toast.addEventListener('animationend', () => toast.remove());
@@ -371,54 +295,42 @@ function mostrarNotificacao(msg, tipo = 'sucesso') {
 }
 
 function atualizarVisibilidadeEndereco() {
-    const tipoEntrega = document.querySelector('input[name="tipo_entrega"]:checked').value;
-    const divGrupo = document.getElementById('grupo-endereco');
-    const divOpcaoSalvo = document.getElementById('opcao-endereco-salvo');
-    const txtEnderecoSalvo = document.getElementById('texto-endereco-salvo');
-    const divFormNovo = document.getElementById('form-novo-endereco');
-    
-    const inputsEndereco = [
-        document.getElementById('endereco-rua'),
-        document.getElementById('endereco-numero'),
-        document.getElementById('endereco-bairro')
-    ];
+    const tipo = document.querySelector('input[name="tipo_entrega"]:checked').value;
+    const grupo = document.getElementById('grupo-endereco');
+    const opcaoSalvo = document.getElementById('opcao-endereco-salvo');
+    const txtSalvo = document.getElementById('texto-endereco-salvo');
+    const formNovo = document.getElementById('form-novo-endereco');
+    const inputs = formNovo.querySelectorAll('input');
 
-    if (tipoEntrega === 'retirada') {
-        divGrupo.style.display = 'none';
-        inputsEndereco.forEach(i => i.required = false);
+    if (tipo === 'retirada') {
+        grupo.style.display = 'none';
+        inputs.forEach(i => i.required = false);
         return;
     }
+    grupo.style.display = 'block';
 
-    divGrupo.style.display = 'block';
-
-    // Verifica se usuário tem endereço salvo
-    if (usuarioAtual && usuarioAtual.endereco) {
-        divOpcaoSalvo.style.display = 'flex';
-        txtEnderecoSalvo.textContent = `Salvo: ${usuarioAtual.endereco}`;
-        
-        // Vê qual radio "origem" está marcado
+    if (usuarioAtual && usuarioAtual.endereco && usuarioAtual.endereco.length > 5) {
+        opcaoSalvo.style.display = 'flex';
+        txtSalvo.textContent = `Salvo: ${usuarioAtual.endereco}`;
         const usaSalvo = document.querySelector('input[name="origem_endereco"]:checked')?.value === 'cadastrado';
         
         if (usaSalvo) {
-            divFormNovo.style.display = 'none';
-            txtEnderecoSalvo.style.display = 'block';
-            inputsEndereco.forEach(i => i.required = false);
+            formNovo.style.display = 'none';
+            txtSalvo.style.display = 'block';
+            inputs.forEach(i => i.required = false);
         } else {
-            divFormNovo.style.display = 'flex';
-            txtEnderecoSalvo.style.display = 'none';
-            inputsEndereco.forEach(i => i.required = true);
+            formNovo.style.display = 'flex';
+            txtSalvo.style.display = 'none';
+            inputs.forEach(i => i.required = true);
         }
     } else {
-        // Se não tem salvo, esconde a opção e força manual
-        divOpcaoSalvo.style.display = 'none';
-        divFormNovo.style.display = 'flex';
-        inputsEndereco.forEach(i => i.required = true);
+        opcaoSalvo.style.display = 'none';
+        formNovo.style.display = 'flex';
+        inputs.forEach(i => i.required = true);
     }
 }
 
-// --- EVENT LISTENERS (CRUCIAL: NÃO REMOVA NADA DAQUI) ---
-
-// 1. Auth Forms
+// --- EVENTOS ---
 document.getElementById('form-login').addEventListener('submit', (e) => {
     e.preventDefault();
     login(document.getElementById('login-email').value, document.getElementById('login-senha').value);
@@ -430,11 +342,13 @@ document.getElementById('form-cadastro').addEventListener('submit', (e) => {
         document.getElementById('cad-nome').value,
         document.getElementById('cad-email').value,
         document.getElementById('cad-senha').value,
-        document.getElementById('cad-endereco').value
+        document.getElementById('cad-rua').value,
+        document.getElementById('cad-numero').value,
+        document.getElementById('cad-bairro').value,
+        document.getElementById('cad-complemento').value
     );
 });
 
-// 2. Tabs Auth
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -446,82 +360,49 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     });
 });
 
-// 3. Botões Carrinho/Perfil
 document.getElementById('carrinho-btn').addEventListener('click', () => {
     modalCarrinho.style.display = 'block';
     atualizarVisibilidadeEndereco();
 });
-
 document.getElementById('btn-logout').addEventListener('click', logout);
 
-document.getElementById('btn-atualizar-perfil').addEventListener('click', () => {
-    if(usuarioAtual) {
-        usuarioAtual.endereco = document.getElementById('perfil-endereco').value;
-        const idx = usuarios.findIndex(u => u.email === usuarioAtual.email);
-        if(idx !== -1) usuarios[idx] = usuarioAtual;
-        salvarDados();
-        mostrarNotificacao('Endereço atualizado!', 'sucesso');
-    }
-});
+document.querySelectorAll('.fechar-btn, .btn-voltar').forEach(btn => btn.addEventListener('click', (e) => {
+    const modalId = e.currentTarget.dataset.modal;
+    if(modalId) document.getElementById(modalId).style.display = 'none';
+}));
 
-// 4. Fechar Modais
-document.querySelectorAll('.fechar-btn, .btn-voltar').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        const modalId = e.currentTarget.dataset.modal;
-        if(modalId) document.getElementById(modalId).style.display = 'none';
-    });
-});
+window.onclick = (e) => { if (e.target.classList.contains('modal')) e.target.style.display = 'none'; };
 
-window.onclick = (e) => {
-    if (e.target.classList.contains('modal')) e.target.style.display = 'none';
-};
-
-// 5. Botões "Adicionar" do Menu (Delegação de Evento)
 menuSection.addEventListener('click', (e) => {
-    if (e.target.classList.contains('adicionar-btn')) {
-        adicionarAoCarrinho(e.target.dataset.id);
-    }
+    if (e.target.classList.contains('adicionar-btn')) adicionarAoCarrinho(e.target.dataset.id);
 });
 
-// 6. Botões "Remover" do Carrinho (Delegação)
 listaCarrinho.addEventListener('click', (e) => {
     const btn = e.target.closest('.btn-remover');
-    if (btn) {
-        removerDoCarrinho(btn.dataset.id);
-    }
+    if (btn) removerDoCarrinho(btn.dataset.id);
 });
 
-// 7. Controle do Formulário Checkout (Endereço)
 document.querySelectorAll('input[name="tipo_entrega"]').forEach(r => {
     r.addEventListener('change', () => {
         atualizarCarrinho();
         atualizarVisibilidadeEndereco();
     });
 });
-
-document.querySelectorAll('input[name="origem_endereco"]').forEach(r => {
-    r.addEventListener('change', atualizarVisibilidadeEndereco);
-});
+document.querySelectorAll('input[name="origem_endereco"]').forEach(r => r.addEventListener('change', atualizarVisibilidadeEndereco));
 
 document.getElementById('checkout-form').addEventListener('submit', iniciarProcessoCheckout);
 
-// 8. PIX: Copiar e Enviar Comprovante
 document.getElementById('btn-copiar-pix').addEventListener('click', () => {
-    const codigo = document.getElementById('pix-code');
-    codigo.select();
-    navigator.clipboard.writeText(codigo.value);
-    mostrarNotificacao('Código copiado!', 'sucesso');
+    navigator.clipboard.writeText(document.getElementById('pix-code').value);
+    mostrarNotificacao('Copiado!', 'sucesso');
 });
 
 document.getElementById('btn-enviar-comprovante').addEventListener('click', () => {
-    const file = document.getElementById('comprovante-upload').files[0];
-    if(!file) return mostrarNotificacao('Anexe o comprovante.', 'erro');
-    
-    // Finaliza com método PIX
+    if(!document.getElementById('comprovante-upload').files[0]) return mostrarNotificacao('Anexe o comprovante.', 'erro');
     finalizarPedidoReal('PIX');
 });
 
-// 9. Carrossel
+// Carrossel
 function iniciarCarrossel() {
     const slides = document.querySelectorAll('.carousel-item');
     if(slides.length === 0) return;
@@ -532,13 +413,9 @@ function iniciarCarrossel() {
         slides[i].classList.add('active');
     }, 5000);
 }
+document.querySelector('.hero-section').addEventListener('click', () => document.getElementById('menu').scrollIntoView({behavior:'smooth'}));
 
-// 10. Scroll Suave Banner
-document.querySelector('.hero-section').addEventListener('click', () => {
-    document.getElementById('menu').scrollIntoView({ behavior: 'smooth' });
-});
-
-// INICIALIZAÇÃO
+// Init
 verificarSessao();
 renderizarMenu();
 atualizarCarrinho();
