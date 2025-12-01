@@ -7,34 +7,13 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Shrikhand&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <style>
-        /* Estilos específicos do Admin */
-        body.admin-body { display: flex; min-height: 100vh; background: #f4f6f9; }
-        .sidebar { width: 250px; background: var(--cor-principal); color: white; padding: 20px; display: flex; flex-direction: column; }
-        .sidebar h2 { font-family: 'Shrikhand'; margin-bottom: 30px; text-align: center; }
-        .menu-admin button { width: 100%; padding: 15px; background: none; border: none; color: white; text-align: left; cursor: pointer; transition: 0.3s; font-size: 1.1rem; display: flex; gap: 10px; align-items: center; }
-        .menu-admin button:hover, .menu-admin button.active { background: rgba(255,255,255,0.2); border-radius: 8px; }
-        .admin-content { flex: 1; padding: 40px; overflow-y: auto; }
-        .admin-section-view { display: none; }
-        .admin-section-view.active { display: block; animation: fadeIn 0.3s; }
-        .card-dashboard { background: white; padding: 20px; border-radius: 10px; box-shadow: var(--sombra-sm); margin-bottom: 20px; }
-        .tabela-admin { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        .tabela-admin th, .tabela-admin td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
-        .status-pendente { color: var(--cor-alerta); font-weight: bold; }
-        .status-aprovado { color: var(--cor-sucesso); font-weight: bold; }
-        .btn-acao { padding: 5px 10px; border-radius: 4px; cursor: pointer; border:none; color: white;}
-        .btn-editar { background: var(--cor-info); }
-        .btn-excluir { background: var(--cor-erro); }
-        .btn-aprovar { background: var(--cor-sucesso); }
-        .sold-out-box { background: #fee; color: #c00; padding: 5px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
-    </style>
 </head>
 <body class="admin-body">
     <aside class="sidebar">
         <h2>Soparia Admin</h2>
         <nav class="menu-admin">
             <button class="nav-btn active" data-target="menu-geral"><i class="bi bi-list-ul"></i> Gerenciar Menu</button>
-            <button class="nav-btn" data-target="notificacoes"><i class="bi bi-bell"></i> Notificações (Pedidos)</button>
+            <button class="nav-btn" data-target="notificacoes"><i class="bi bi-bell"></i> Notificações</button>
             <button class="nav-btn" data-target="informacoes"><i class="bi bi-graph-up"></i> Informações</button>
             <button class="nav-btn" data-target="usuarios"><i class="bi bi-people"></i> Usuários</button>
             <button id="btn-sair-admin" style="margin-top: auto; background: #b71c1c;"><i class="bi bi-box-arrow-left"></i> Sair</button>
@@ -42,81 +21,93 @@
     </aside>
 
     <main class="admin-content">
-        
         <section id="menu-geral" class="admin-section-view active">
-            <div class="card-dashboard">
-                <h3><i class="bi bi-pencil-square"></i> Editar Cardápio</h3>
-                <p>Gerencie produtos, preços e disponibilidade (Sold Out).</p>
-                <div class="form-group" style="margin-top: 20px; border: 1px dashed #ccc; padding: 15px;">
-                    <h4>Adicionar/Editar Item</h4>
-                    <input type="hidden" id="edit-id">
-                    <div class="endereco-grid">
-                        <input type="text" id="prod-nome" class="form-control" placeholder="Nome do Produto">
-                        <div class="endereco-linha">
-                            <input type="number" id="prod-preco" class="form-control" placeholder="Preço" step="0.01">
-                            <select id="prod-categoria" class="form-control">
-                                <option value="Sopas e Pratos">Sopas e Pratos</option>
-                                <option value="Bebidas">Bebidas</option>
-                                <option value="Sobremesas">Sobremesas</option>
-                            </select>
-                        </div>
-                        <input type="text" id="prod-img" class="form-control" placeholder="URL da Imagem">
-                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                            <input type="checkbox" id="prod-soldout" style="width: 20px; height: 20px;">
-                            <strong>Marcar como "Sold Out" (Esgotado)</strong>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3><i class="bi bi-pencil-square"></i> Gerenciar Cardápio</h3>
+            </div>
+
+            <div class="card-dashboard" style="background: #fff; padding: 25px; border-left: 5px solid var(--cor-principal);">
+                <h4 style="margin-bottom: 15px; color: var(--cor-principal);">Adicionar / Editar Item</h4>
+                <input type="hidden" id="edit-id">
+                
+                <div class="endereco-grid">
+                    <div class="endereco-linha">
+                        <input type="text" id="prod-nome" class="form-control" placeholder="Nome do Produto" style="flex: 2;">
+                        <input type="number" id="prod-preco" class="form-control" placeholder="Preço (R$)" step="0.01" style="flex: 1;">
+                    </div>
+                    <div class="endereco-linha">
+                        <select id="prod-categoria" class="form-control" style="flex: 1;">
+                            <option value="Sopas e Pratos">Sopas e Pratos</option>
+                            <option value="Bebidas">Bebidas</option>
+                            <option value="Sobremesas">Sobremesas</option>
+                        </select>
+                        <input type="text" id="prod-img" class="form-control" placeholder="URL da Imagem (assets/...)" style="flex: 2;">
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px;">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none;">
+                            <input type="checkbox" id="prod-soldout" style="width: 18px; height: 18px; accent-color: red;">
+                            <span style="font-weight: 600; color: #d32f2f;">Marcar como Esgotado (Sold Out)</span>
                         </label>
-                        <button id="btn-salvar-produto" class="btn-finalizar">Salvar Produto</button>
+                        <button id="btn-salvar-produto" class="btn-finalizar" style="width: auto; padding: 10px 30px;">Salvar Item</button>
                     </div>
                 </div>
-                
+            </div>
+            
+            <div class="card-dashboard" style="margin-top: 20px;">
                 <table class="tabela-admin">
-                    <thead><tr><th>Foto</th><th>Nome</th><th>Preço</th><th>Status</th><th>Ações</th></tr></thead>
+                    <thead>
+                        <tr style="background: #f8f9fa;">
+                            <th style="width: 80px;">Imagem</th>
+                            <th>Nome</th>
+                            <th>Preço</th>
+                            <th>Status</th>
+                            <th style="text-align: right;">Ações</th>
+                        </tr>
+                    </thead>
                     <tbody id="lista-produtos-admin"></tbody>
                 </table>
             </div>
         </section>
 
         <section id="notificacoes" class="admin-section-view">
-            <h3><i class="bi bi-bell-fill"></i> Pedidos Aguardando Aprovação</h3>
-            <div id="lista-pedidos-pendentes">
-                </div>
+            <h3><i class="bi bi-bell-fill"></i> Pedidos Pendentes</h3>
+            <div id="lista-pedidos-pendentes" style="display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));"></div>
         </section>
 
         <section id="informacoes" class="admin-section-view">
-            <h3><i class="bi bi-cash-coin"></i> Histórico de Vendas</h3>
+            <h3><i class="bi bi-graph-up"></i> Dashboard Financeiro</h3>
             <div class="card-dashboard">
-                <label>Selecione a Data:</label>
-                <input type="date" id="filtro-data" class="form-control" style="max-width: 200px;">
-                
-                <div style="margin-top: 20px; display: flex; gap: 20px;">
-                    <div style="background: var(--cor-secundaria); color: white; padding: 20px; flex: 1; border-radius: 8px;">
-                        <h4>Total Vendido</h4>
-                        <h2 id="dash-total">R$ 0,00</h2>
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+                    <label><strong>Filtrar Data:</strong></label>
+                    <input type="date" id="filtro-data" class="form-control" style="max-width: 200px;">
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                    <div style="background: linear-gradient(135deg, #2ecc71, #27ae60); color: white; padding: 25px; border-radius: 12px;">
+                        <h4 style="margin-bottom: 5px; opacity: 0.9;">Faturamento do Dia</h4>
+                        <h2 id="dash-total" style="font-size: 2rem;">R$ 0,00</h2>
                     </div>
-                    <div style="background: var(--cor-principal); color: white; padding: 20px; flex: 1; border-radius: 8px;">
-                        <h4>Itens Vendidos</h4>
-                        <h2 id="dash-qtd">0</h2>
+                    <div style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 25px; border-radius: 12px;">
+                        <h4 style="margin-bottom: 5px; opacity: 0.9;">Pedidos Realizados</h4>
+                        <h2 id="dash-qtd" style="font-size: 2rem;">0</h2>
                     </div>
                 </div>
-
-                <h4 style="margin-top: 20px;">Detalhes do Dia</h4>
-                <ul id="dash-lista-vendas" class="lista-carrinho"></ul>
+                <h4><i class="bi bi-list-check"></i> Detalhes das Vendas</h4>
+                <div style="max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px;">
+                    <ul id="dash-lista-vendas" class="lista-carrinho" style="margin: 0;"></ul>
+                </div>
             </div>
         </section>
 
         <section id="usuarios" class="admin-section-view">
-            <h3><i class="bi bi-people-fill"></i> Clientes Cadastrados</h3>
+            <h3><i class="bi bi-people-fill"></i> Base de Clientes</h3>
             <div class="card-dashboard">
                 <table class="tabela-admin">
-                    <thead><tr><th>Nome</th><th>Email</th><th>Endereço</th><th>Tipo</th></tr></thead>
+                    <thead><tr><th>Nome</th><th>Email</th><th>Endereço Cadastrado</th><th>Tipo</th></tr></thead>
                     <tbody id="lista-usuarios-admin"></tbody>
                 </table>
             </div>
         </section>
-
     </main>
-    
-    <div id="toast-container" class="toast-container"></div>
     <script src="admin.js"></script>
 </body>
 </html>
