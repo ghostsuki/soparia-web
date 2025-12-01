@@ -1,25 +1,15 @@
-// --- CONFIGURAÇÃO INICIAL E DADOS ---
-let estoque = JSON.parse(localStorage.getItem('soparia_estoque')) || {
-    'sopa-frango': { nome: 'Sopa de Frango com Legumes', categoria: 'Sopas e Pratos', preco: 25.00, esgotado: false, imagem: 'https://via.placeholder.com/300x180/8B4513/FFFFFF?text=Sopa+Frango' },
-    'sopa-carne': { nome: 'Sopa de Carne com Mandioca', categoria: 'Sopas e Pratos', preco: 28.00, esgotado: false, imagem: 'https://via.placeholder.com/300x180/A0522D/FFFFFF?text=Sopa+Carne' },
-    'sopa-mocoto': { nome: 'Sopa de Mocotó Especial', categoria: 'Sopas e Pratos', preco: 35.00, esgotado: false, imagem: 'https://via.placeholder.com/300x180/B0C4DE/FFFFFF?text=Sopa+Mocotó' },
-    'lasanha': { nome: 'Lasanha à Bolonhesa (Prato)', categoria: 'Sopas e Pratos', preco: 30.00, esgotado: false, imagem: 'https://via.placeholder.com/300x180/CD5C5C/FFFFFF?text=Lasanha' },
-    'suco': { nome: 'Suco Natural (Laranja/Abacaxi)', categoria: 'Bebidas', preco: 8.00, esgotado: false, imagem: 'https://via.placeholder.com/300x180/FFA500/FFFFFF?text=Suco' },
-    'refri': { nome: 'Refrigerante Lata (Diversos)', categoria: 'Bebidas', preco: 7.00, esgotado: false, imagem: 'https://via.placeholder.com/300x180/00CED1/FFFFFF?text=Refrigerante' },
-    'torta': { nome: 'Fatia de Torta Holandesa', categoria: 'Sobremesas', preco: 12.00, esgotado: false, imagem: 'https://via.placeholder.com/300x180/D2B48C/FFFFFF?text=Torta' },
-    'bolo': { nome: 'Bolo de Chocolate Vulcão', categoria: 'Sobremesas', preco: 15.00, esgotado: false, imagem: 'https://via.placeholder.com/300x180/8B4513/FFFFFF?text=Bolo' }
-};
+// script.js - VERSÃO COM INTEGRAÇÃO DE API (BACKEND)
 
-let usuarios = JSON.parse(localStorage.getItem('soparia_usuarios')) || [
-    { nome: 'Administrador', email: 'adm@soparia.com', senha: '08032004', tipo: 'adm', endereco: '' }
-];
+// Configuração da API
+const API_URL = 'http://localhost:3000/api';
 
-let usuarioAtual = JSON.parse(localStorage.getItem('soparia_sessao')) || null;
+// Estado Global
+let usuarioAtual = JSON.parse(localStorage.getItem('soparia_sessao')) || null; // Sessão mantém no local para persistência rápida
 let carrinho = [];
 const TAXA_ENTREGA = 3.00;
 
-// Elementos
-const menuSection = document.getElementById('menu-content');
+// Elementos DOM
+const menuSection = document.getElementById('menu-content'); // Atenção ao ID no HTML
 const listaCarrinho = document.getElementById('lista-carrinho');
 const totalCarrinhoSpan = document.getElementById('total-carrinho');
 const contadorCarrinhoSpan = document.getElementById('contador-carrinho');
@@ -30,12 +20,134 @@ const toastContainer = document.getElementById('toast-container');
 const btnLoginPerfil = document.getElementById('btn-login-perfil');
 const textoLogin = document.getElementById('texto-login');
 
-// --- SISTEMA DE USUÁRIOS ---
-function salvarDados() {
-    localStorage.setItem('soparia_estoque', JSON.stringify(estoque));
-    localStorage.setItem('soparia_usuarios', JSON.stringify(usuarios));
-    if (usuarioAtual) localStorage.setItem('soparia_sessao', JSON.stringify(usuarioAtual));
-    else localStorage.removeItem('soparia_sessao');
+// --- 1. RENDERIZAÇÃO DO MENU (VIA API) ---
+async function renderizarMenu() {
+    try {
+        const response = await fetch(`${API_URL}/produtos`);
+        const produtos = await response.json();
+
+        // Agrupamento por Categoria
+        const menuAgrupado = {};
+        produtos.forEach(item => {
+            // O JOIN no SQL retorna categoria_nome, vamos usar isso
+            const cat = item.categoria_nome || 'Outros'; 
+            if (!menuAgrupado[cat]) menuAgrupado[cat] = [];
+            menuAgrupado[cat].push(item);
+        });
+
+        // Limpa e Renderiza (igual ao anterior, mas com dados do banco)
+        menuSection.innerHTML = '';
+        const navContainer = document.getElementById('menu-nav');
+        if(navContainer) navContainer.innerHTML = '';
+
+        for (const [categoria, itens] of Object.entries(menuAgrupado)) {
+            const catId = 'cat-' + categoria.replace(/\s+/g, '-').toLowerCase();
+
+            // Botão Nav
+            if(navContainer) {
+                const btn = document.createElement('button');
+                btn.className = 'cat-btn';
+                btn.textContent = categoria;
+                btn.onclick = () => document.getElementById(catId).scrollIntoView({ behavior: 'smooth', block: 'center' });
+                navContainer.appendChild(btn);
+            }
+
+            // Título
+            const h3 = document.createElement('h3');
+            h3.className = 'categoria-titulo';
+            h3.id = catId;
+            h3.textContent = categoria;
+            menuSection.appendChild(h3);
+
+            // Grid
+            const grid = document.createElement('div');
+            grid.className = 'menu-grid';
+            menuSection.appendChild(grid);
+
+            itens.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'produto-card';
+                // Converte booleano do MySQL (0 ou 1) para true/false
+                const isSoldOut = Boolean(item.esgotado);
+                
+                card.innerHTML = `
+                    <img src="${item.imagem}" class="produto-imagem" style="${isSoldOut ? 'filter: grayscale(100%); opacity:0.7' : ''}" alt="${item.nome}">
+                    <div class="produto-info">
+                        <div>
+                            <h4 class="produto-nome">${item.nome}</h4>
+                            <p class="produto-descricao">${item.descricao || 'Delicioso item do cardápio.'}</p>
+                        </div>
+                        <div>
+                            <div class="produto-footer">
+                                <span class="produto-preco">R$ ${parseFloat(item.preco).toFixed(2)}</span>
+                                <span class="produto-estoque ${isSoldOut ? 'esgotado' : 'disponivel'}">${isSoldOut ? 'Esgotado' : 'Disponível'}</span>
+                            </div>
+                            <button class="adicionar-btn" onclick="adicionarAoCarrinho(${item.id}, '${item.nome}', ${item.preco}, ${isSoldOut})" ${isSoldOut ? 'disabled' : ''}>
+                                ${isSoldOut ? 'SOLD OUT' : '➕ Adicionar'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+    } catch (error) {
+        console.error('Erro ao carregar menu:', error);
+        menuSection.innerHTML = '<p style="text-align:center; color:red">Erro ao carregar cardápio. Verifique se o servidor está rodando.</p>';
+    }
+}
+
+// --- 2. AUTH (VIA API) ---
+async function login(email, senha) {
+    try {
+        const response = await fetch(`${API_URL}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, senha })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            usuarioAtual = data.user;
+            localStorage.setItem('soparia_sessao', JSON.stringify(usuarioAtual));
+            
+            if (usuarioAtual.tipo === 'adm') window.location.href = 'admin.html';
+            else {
+                verificarSessao();
+                document.getElementById('modal-login').style.display = 'none';
+                mostrarNotificacao(`Bem-vindo, ${usuarioAtual.nome.split(' ')[0]}!`, 'sucesso');
+            }
+        } else {
+            mostrarNotificacao(data.message || 'Erro no login', 'erro');
+        }
+    } catch (error) {
+        mostrarNotificacao('Erro de conexão com o servidor.', 'erro');
+    }
+}
+
+async function cadastrar(nome, email, senha, rua, num, bairro, comp) {
+    if (senha.length < 8) return mostrarNotificacao('Senha deve ter mín. 8 caracteres.', 'erro');
+    
+    const enderecoCompleto = `${rua}, ${num} - ${bairro} ${comp ? '('+comp+')' : ''}`;
+
+    try {
+        const response = await fetch(`${API_URL}/cadastro`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nome, email, senha, endereco: enderecoCompleto })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            mostrarNotificacao('Conta criada! Faça login.', 'sucesso');
+            // Opcional: Já logar direto
+            login(email, senha);
+        } else {
+            mostrarNotificacao(data.message || 'Erro ao cadastrar.', 'erro');
+        }
+    } catch (error) {
+        mostrarNotificacao('Erro de conexão.', 'erro');
+    }
 }
 
 function verificarSessao() {
@@ -44,129 +156,32 @@ function verificarSessao() {
         if (usuarioAtual.tipo === 'adm') {
             btnLoginPerfil.onclick = () => window.location.href = 'admin.html';
             textoLogin.textContent = "Painel Admin";
-            return;
         } else {
             btnLoginPerfil.onclick = () => {
                 document.getElementById('perfil-nome').textContent = usuarioAtual.nome;
                 document.getElementById('perfil-email').textContent = usuarioAtual.email;
-                document.getElementById('perfil-tipo').textContent = "Cliente";
-                document.getElementById('perfil-endereco').value = usuarioAtual.endereco || 'Sem endereço salvo.';
+                document.getElementById('perfil-endereco').value = usuarioAtual.endereco || '';
                 document.getElementById('modal-perfil').style.display = 'block';
             };
         }
-        if (document.getElementById('email-cliente')) document.getElementById('email-cliente').value = usuarioAtual.email;
+        const emailInput = document.getElementById('email-cliente');
+        if(emailInput) emailInput.value = usuarioAtual.email;
     } else {
         textoLogin.textContent = 'Entrar';
         btnLoginPerfil.onclick = () => document.getElementById('modal-login').style.display = 'block';
     }
 }
 
-function login(email, senha) {
-    const user = usuarios.find(u => u.email === email && u.senha === senha);
-    if (user) {
-        usuarioAtual = user;
-        salvarDados();
-        if (user.tipo === 'adm') window.location.href = 'admin.html';
-        else {
-            verificarSessao();
-            document.getElementById('modal-login').style.display = 'none';
-            mostrarNotificacao(`Bem-vindo, ${user.nome}!`, 'sucesso');
-        }
-    } else {
-        mostrarNotificacao('E-mail ou senha incorretos.', 'erro');
-    }
-}
-
-function cadastrar(nome, email, senha, rua, num, bairro, comp) {
-    if (usuarios.find(u => u.email === email)) return mostrarNotificacao('E-mail já cadastrado.', 'erro');
-    if (senha.length < 8) return mostrarNotificacao('A senha deve ter no mínimo 8 caracteres.', 'erro');
-
-    const enderecoCompleto = `${rua}, ${num} - ${bairro} ${comp ? '('+comp+')' : ''}`;
-    const novoUser = { nome, email, senha, tipo: 'cliente', endereco: enderecoCompleto };
-    usuarios.push(novoUser);
-    usuarioAtual = novoUser;
-    salvarDados();
-    verificarSessao();
-    document.getElementById('modal-login').style.display = 'none';
-    mostrarNotificacao('Conta criada com sucesso!', 'sucesso');
-}
-
 function logout() {
     usuarioAtual = null;
-    salvarDados();
+    localStorage.removeItem('soparia_sessao');
     verificarSessao();
     document.getElementById('modal-perfil').style.display = 'none';
-    const form = document.getElementById('checkout-form');
-    if(form) form.reset();
-    mostrarNotificacao('Você saiu da conta.', 'info');
+    mostrarNotificacao('Saiu da conta.', 'info');
 }
 
-// --- RENDERIZAR MENU (CORRIGIDO PARA SEÇÕES E NAVEGAÇÃO) ---
-function renderizarMenu() {
-    menuSection.innerHTML = '';
-    const navContainer = document.getElementById('menu-nav');
-    if(navContainer) navContainer.innerHTML = ''; 
-
-    const menuAgrupado = {};
-    for (const [id, item] of Object.entries(estoque)) {
-        if (!menuAgrupado[item.categoria]) menuAgrupado[item.categoria] = [];
-        menuAgrupado[item.categoria].push({ id, ...item });
-    }
-
-    for (const [categoria, itens] of Object.entries(menuAgrupado)) {
-        // 1. Cria ID para âncora
-        const catId = 'cat-' + categoria.replace(/\s+/g, '-').toLowerCase();
-
-        // 2. Cria Botão de Navegação
-        if(navContainer) {
-            const btn = document.createElement('button');
-            btn.className = 'cat-btn';
-            btn.textContent = categoria;
-            btn.onclick = () => document.getElementById(catId).scrollIntoView({ behavior: 'smooth', block: 'center' });
-            navContainer.appendChild(btn);
-        }
-
-        // 3. Título
-        const h3 = document.createElement('h3');
-        h3.className = 'categoria-titulo';
-        h3.id = catId;
-        h3.textContent = categoria;
-        menuSection.appendChild(h3);
-
-        // 4. Grid da Categoria
-        const grid = document.createElement('div');
-        grid.className = 'menu-grid';
-        menuSection.appendChild(grid);
-
-        itens.forEach(item => {
-            const card = document.createElement('div');
-            card.className = 'produto-card';
-            const isSoldOut = item.esgotado === true;
-            
-            card.innerHTML = `
-                <img src="${item.imagem}" class="produto-imagem" style="${isSoldOut ? 'filter: grayscale(100%); opacity:0.7' : ''}" alt="${item.nome}">
-                <div class="produto-info">
-                    <div>
-                        <h4 class="produto-nome">${item.nome}</h4>
-                        <p class="produto-descricao">Delicioso item do nosso cardápio.</p>
-                    </div>
-                    <div>
-                        <div class="produto-footer">
-                            <span class="produto-preco">R$ ${item.preco.toFixed(2)}</span>
-                            <span class="produto-estoque ${isSoldOut ? 'esgotado' : 'disponivel'}">${isSoldOut ? 'Esgotado' : 'Disponível'}</span>
-                        </div>
-                        <button class="adicionar-btn" data-id="${item.id}" ${isSoldOut ? 'disabled' : ''}>
-                            ${isSoldOut ? 'SOLD OUT' : '➕ Adicionar'}
-                        </button>
-                    </div>
-                </div>
-            `;
-            grid.appendChild(card);
-        });
-    }
-}
-
-// --- CARRINHO ---
+// --- 3. CARRINHO (LOCAL) ---
+// O carrinho continua local até a hora de fechar a compra
 function atualizarCarrinho() {
     listaCarrinho.innerHTML = '';
     const inputEntrega = document.querySelector('input[name="tipo_entrega"]:checked');
@@ -174,16 +189,16 @@ function atualizarCarrinho() {
     let total = 0;
     let totalItens = 0;
 
-    if (carrinho.length === 0) listaCarrinho.innerHTML = '<li style="text-align:center; padding:20px;">O carrinho está vazio.</li>';
+    if (carrinho.length === 0) listaCarrinho.innerHTML = '<li style="text-align:center; padding:20px;">Vazio...</li>';
     else {
         carrinho.forEach(item => {
             const li = document.createElement('li');
-            li.className = 'carrinho-item';
+            li.classList.add('carrinho-item');
             li.innerHTML = `
                 <div class="item-info"><div class="item-nome">${item.quantidade}x ${item.nome}</div></div>
                 <div class="item-acoes">
                     <span class="item-preco">R$ ${(item.preco * item.quantidade).toFixed(2)}</span>
-                    <button class="btn-remover" data-id="${item.id}"><i class="bi bi-trash"></i></button>
+                    <button class="btn-remover" onclick="removerDoCarrinho(${item.id})"><i class="bi bi-trash"></i></button>
                 </div>`;
             listaCarrinho.appendChild(li);
             total += item.preco * item.quantidade;
@@ -193,58 +208,28 @@ function atualizarCarrinho() {
 
     if (tipoEntrega === 'entrega' && total > 0) total += TAXA_ENTREGA;
     totalCarrinhoSpan.textContent = total.toFixed(2);
-    contadorCarrinhoSpan.textContent = totalItens;
+    if(contadorCarrinhoSpan) contadorCarrinhoSpan.textContent = totalItens;
 }
 
-function adicionarAoCarrinho(produtoId) {
-    const produto = estoque[produtoId];
-    if (!produto || produto.esgotado) return mostrarNotificacao('Item indisponível.', 'erro');
+// Nota: A função adicionar agora recebe parametros diretos do HTML gerado
+function adicionarAoCarrinho(id, nome, preco, esgotado) {
+    if (esgotado) return mostrarNotificacao('Item esgotado.', 'erro');
 
-    const itemExistente = carrinho.find(item => item.id === produtoId);
+    const itemExistente = carrinho.find(item => item.id === id);
     if (itemExistente) itemExistente.quantidade++;
-    else carrinho.push({ id: produtoId, nome: produto.nome, preco: produto.preco, quantidade: 1 });
+    else carrinho.push({ id, nome, preco: parseFloat(preco), quantidade: 1 });
     
     atualizarCarrinho();
-    mostrarNotificacao(`${produto.nome} adicionado!`, 'sucesso');
+    mostrarNotificacao(`${nome} adicionado!`, 'sucesso');
 }
 
-function removerDoCarrinho(produtoId) {
-    carrinho = carrinho.filter(item => item.id !== produtoId);
+window.removerDoCarrinho = (id) => {
+    carrinho = carrinho.filter(item => item.id !== id);
     atualizarCarrinho();
-}
+};
 
-// --- CHECKOUT ---
-function iniciarProcessoCheckout(e) {
-    e.preventDefault();
-    if (!usuarioAtual) {
-        modalCarrinho.style.display = 'none';
-        document.getElementById('modal-login').style.display = 'block';
-        return mostrarNotificacao('Faça login para continuar.', 'erro');
-    }
-    if (carrinho.length === 0) return mostrarNotificacao('Carrinho vazio!', 'info');
-
-    const metodoPagamento = document.getElementById('metodo-pagamento').value;
-    const inputEntrega = document.querySelector('input[name="tipo_entrega"]:checked').value;
-    const origemEndereco = document.querySelector('input[name="origem_endereco"]:checked')?.value || 'novo';
-
-    if (inputEntrega === 'entrega' && origemEndereco === 'cadastrado') {
-        if (!usuarioAtual.endereco || usuarioAtual.endereco.length < 5) {
-            return mostrarNotificacao('Seu perfil não tem endereço. Escolha "Outro endereço".', 'erro');
-        }
-    }
-    if (inputEntrega === 'entrega' && origemEndereco === 'novo') {
-        if (!document.getElementById('checkout-form').checkValidity()) return mostrarNotificacao('Preencha o endereço completo.', 'erro');
-    }
-
-    if (metodoPagamento === 'pix') {
-        modalCarrinho.style.display = 'none';
-        modalPix.style.display = 'block';
-    } else {
-        finalizarPedidoReal('Dinheiro');
-    }
-}
-
-function finalizarPedidoReal(metodo) {
+// --- 4. CHECKOUT (ENVIA PARA O BANCO) ---
+async function finalizarPedidoReal(metodo) {
     const inputEntrega = document.querySelector('input[name="tipo_entrega"]:checked').value;
     const origem = document.querySelector('input[name="origem_endereco"]:checked')?.value || 'novo';
     let endFinal = 'Retirada no Balcão';
@@ -260,28 +245,57 @@ function finalizarPedidoReal(metodo) {
         }
     }
 
-    const pedido = {
-        cliente: usuarioAtual.nome,
-        email: usuarioAtual.email,
-        itens: [...carrinho],
+    const pedidoData = {
+        usuario_id: usuarioAtual.id,
         total: parseFloat(totalCarrinhoSpan.textContent),
         metodo: metodo,
         endereco: endFinal,
-        data: new Date().toISOString()
+        itens: carrinho
     };
 
-    let pendentes = JSON.parse(localStorage.getItem('soparia_pedidos_pendentes')) || [];
-    pendentes.push(pedido);
-    localStorage.setItem('soparia_pedidos_pendentes', JSON.stringify(pendentes));
+    try {
+        const response = await fetch(`${API_URL}/pedidos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(pedidoData)
+        });
+        const result = await response.json();
 
-    carrinho = [];
-    atualizarCarrinho();
-    modalCarrinho.style.display = 'none';
-    modalPix.style.display = 'none';
-    modalConfirmacao.style.display = 'block';
-    document.getElementById('checkout-form').reset();
+        if (result.success) {
+            carrinho = [];
+            atualizarCarrinho();
+            modalCarrinho.style.display = 'none';
+            modalPix.style.display = 'none';
+            modalConfirmacao.style.display = 'block';
+            document.getElementById('checkout-form').reset();
+        } else {
+            mostrarNotificacao('Erro ao processar pedido.', 'erro');
+        }
+    } catch (error) {
+        mostrarNotificacao('Erro de conexão ao finalizar.', 'erro');
+    }
 }
 
+// Listener Wrapper para Finalizar
+function iniciarProcessoCheckout(e) {
+    e.preventDefault();
+    if (!usuarioAtual) {
+        modalCarrinho.style.display = 'none';
+        document.getElementById('modal-login').style.display = 'block';
+        return mostrarNotificacao('Faça login para continuar.', 'erro');
+    }
+    if (carrinho.length === 0) return mostrarNotificacao('Carrinho vazio!', 'info');
+
+    const metodo = document.getElementById('metodo-pagamento').value;
+    if (metodo === 'pix') {
+        modalCarrinho.style.display = 'none';
+        modalPix.style.display = 'block';
+    } else {
+        finalizarPedidoReal('Dinheiro');
+    }
+}
+
+// --- HELPERS E UI ---
 function mostrarNotificacao(msg, tipo = 'sucesso') {
     const icones = { sucesso: 'bi-check-circle-fill', erro: 'bi-x-circle-fill', info: 'bi-info-circle-fill' };
     const toast = document.createElement('div');
@@ -373,15 +387,6 @@ document.querySelectorAll('.fechar-btn, .btn-voltar').forEach(btn => btn.addEven
 
 window.onclick = (e) => { if (e.target.classList.contains('modal')) e.target.style.display = 'none'; };
 
-menuSection.addEventListener('click', (e) => {
-    if (e.target.classList.contains('adicionar-btn')) adicionarAoCarrinho(e.target.dataset.id);
-});
-
-listaCarrinho.addEventListener('click', (e) => {
-    const btn = e.target.closest('.btn-remover');
-    if (btn) removerDoCarrinho(btn.dataset.id);
-});
-
 document.querySelectorAll('input[name="tipo_entrega"]').forEach(r => {
     r.addEventListener('change', () => {
         atualizarCarrinho();
@@ -402,7 +407,6 @@ document.getElementById('btn-enviar-comprovante').addEventListener('click', () =
     finalizarPedidoReal('PIX');
 });
 
-// Carrossel
 function iniciarCarrossel() {
     const slides = document.querySelectorAll('.carousel-item');
     if(slides.length === 0) return;
