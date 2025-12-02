@@ -1,29 +1,35 @@
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
+const path = require('path');
+require('dotenv').config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --- CONEXÃO BANCO ---
+// Servir arquivos estáticos (HTML, CSS, JS) para rodar tudo na porta 3000
+app.use(express.static(path.join(__dirname, '.')));
+
+// --- CONEXÃO COM BANCO NA NUVEM (AIVEN) ---
 const db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: 'Luiz0803', // <--- LEMBRE DE COLOCAR SUA SENHA AQUI
-    database: 'soparia_db'
+    host: 'mysql-25911050-soparia.g.aivencloud.com',
+    port: 26105,
+    user: 'avnadmin',
+    password: process.env.DB_PASSWORD, // <--- TROQUE A SENHA REAL POR ISSO
+    database: 'soparia_db',
+    ssl: { rejectUnauthorized: false }
 });
 
 db.connect((err) => {
-    if (err) console.error('❌ Erro MySQL:', err);
-    else console.log('✅ MySQL Conectado!');
+    if (err) console.error('❌ Erro ao conectar no MySQL Aiven:', err);
+    else console.log('✅ Conectado ao Banco na Nuvem com sucesso!');
 });
 
-// --- ROTAS PÚBLICAS ---
+// --- ROTAS DA API ---
 
 // Listar Produtos
 app.get('/api/produtos', (req, res) => {
-    // Busca produtos e junta com o nome da categoria
     const sql = `SELECT p.*, c.nome as categoria_nome FROM produtos p LEFT JOIN categorias c ON p.categoria_id = c.id`;
     db.query(sql, (err, results) => {
         if (err) return res.status(500).json(err);
@@ -44,37 +50,53 @@ app.post('/api/login', (req, res) => {
 // Cadastro
 app.post('/api/cadastro', (req, res) => {
     const { nome, email, senha, endereco } = req.body;
-    db.query('SELECT * FROM usuarios WHERE email = ?', [email], (err, results) => {
-        if (results.length > 0) return res.status(400).json({ message: 'Email já existe' });
+    
+    const checkSql = 'SELECT * FROM usuarios WHERE email = ?';
+    db.query(checkSql, [email], (err, results) => {
+        if (err) return res.status(500).json({ message: "Erro no banco." });
+        if (results.length > 0) return res.status(400).json({ message: 'Email já cadastrado' });
         
-        db.query('INSERT INTO usuarios (nome, email, senha, endereco, tipo) VALUES (?, ?, ?, ?, "cliente")', 
-        [nome, email, senha, endereco], (err, result) => {
-            if (err) return res.status(500).json(err);
-            res.json({ success: true });
+        // Correção anterior: 'cliente' passado como parâmetro
+        const insertSql = 'INSERT INTO usuarios (nome, email, senha, endereco, tipo) VALUES (?, ?, ?, ?, ?)';
+        db.query(insertSql, [nome, email, senha, endereco, 'cliente'], (err, result) => {
+            if (err) return res.status(500).json({ message: "Erro ao salvar usuário." });
+            res.json({ success: true, message: 'Usuário criado!' });
         });
     });
 });
 
-// Criar Pedido
+// ROTA DE PEDIDOS (CORRIGIDA AGORA)
 app.post('/api/pedidos', (req, res) => {
     const { usuario_id, total, metodo, endereco, itens } = req.body;
     
-    db.query('INSERT INTO pedidos (usuario_id, total, metodo_pagamento, endereco_entrega, status) VALUES (?, ?, ?, ?, "pendente")', 
-    [usuario_id, total, metodo, endereco], (err, result) => {
-        if (err) return res.status(500).json(err);
+    console.log("📦 Novo Pedido:", req.body);
+
+    // CORREÇÃO AQUI: Trocamos "pendente" por ?
+    const sqlPedido = 'INSERT INTO pedidos (usuario_id, total, metodo_pagamento, endereco_entrega, status) VALUES (?, ?, ?, ?, ?)';
+    
+    // Passamos 'pendente' dentro do array de valores
+    db.query(sqlPedido, [usuario_id, total, metodo, endereco, 'pendente'], (err, result) => {
+        if (err) {
+            console.error("❌ Erro Pedido:", err);
+            return res.status(500).json(err);
+        }
         const pedidoId = result.insertId;
         
         const itensValues = itens.map(i => [pedidoId, i.id, i.quantidade, i.preco]);
-        db.query('INSERT INTO itens_pedido (pedido_id, produto_id, quantidade, preco_unitario) VALUES ?', [itensValues], (err) => {
-            if (err) return res.status(500).json(err);
-            res.json({ success: true });
+        const sqlItens = 'INSERT INTO itens_pedido (pedido_id, produto_id, quantidade, preco_unitario) VALUES ?';
+        
+        db.query(sqlItens, [itensValues], (errItens) => {
+            if (errItens) {
+                console.error("❌ Erro Itens:", errItens);
+                return res.status(500).json(errItens);
+            }
+            res.json({ success: true, pedidoId });
         });
     });
 });
 
-// --- ROTAS DE ADMIN ---
+// --- ROTAS ADMIN ---
 
-// Listar Todos os Usuários
 app.get('/api/admin/usuarios', (req, res) => {
     db.query('SELECT * FROM usuarios', (err, results) => {
         if (err) return res.status(500).json(err);
@@ -82,21 +104,14 @@ app.get('/api/admin/usuarios', (req, res) => {
     });
 });
 
-// Listar Pedidos (Com detalhes do usuário)
 app.get('/api/admin/pedidos', (req, res) => {
-    const sql = `
-        SELECT p.*, u.nome as cliente_nome, u.email as cliente_email 
-        FROM pedidos p 
-        JOIN usuarios u ON p.usuario_id = u.id 
-        ORDER BY p.data_pedido DESC
-    `;
+    const sql = `SELECT p.*, u.nome as cliente_nome, u.email as cliente_email FROM pedidos p JOIN usuarios u ON p.usuario_id = u.id ORDER BY p.data_pedido DESC`;
     db.query(sql, (err, results) => {
         if (err) return res.status(500).json(err);
         res.json(results);
     });
 });
 
-// Atualizar Status do Pedido (Aprovar)
 app.put('/api/admin/pedidos/:id', (req, res) => {
     const { status } = req.body;
     db.query('UPDATE pedidos SET status = ? WHERE id = ?', [status, req.params.id], (err) => {
@@ -105,32 +120,27 @@ app.put('/api/admin/pedidos/:id', (req, res) => {
     });
 });
 
-// Salvar/Editar Produto
 app.post('/api/admin/produtos', (req, res) => {
     const { id, nome, preco, imagem, esgotado, categoria } = req.body;
-    
-    // Mapeamento simples de categoria texto para ID (Ideal seria buscar do banco)
     const catMap = { 'Sopas e Pratos': 1, 'Bebidas': 2, 'Sobremesas': 3 };
     const catId = catMap[categoria] || 1;
 
+    // Converte booleano true/false para 1/0 do MySQL
+    const esgotadoBit = esgotado ? 1 : 0;
+
     if (id) {
-        // Atualizar
-        const sql = 'UPDATE produtos SET nome=?, preco=?, imagem=?, esgotado=?, categoria_id=? WHERE id=?';
-        db.query(sql, [nome, preco, imagem, esgotado, catId, id], (err) => {
+        db.query('UPDATE produtos SET nome=?, preco=?, imagem=?, esgotado=?, categoria_id=? WHERE id=?', [nome, preco, imagem, esgotadoBit, catId, id], (err) => {
             if (err) return res.status(500).json(err);
             res.json({ success: true });
         });
     } else {
-        // Criar Novo
-        const sql = 'INSERT INTO produtos (nome, preco, imagem, esgotado, categoria_id) VALUES (?, ?, ?, ?, ?)';
-        db.query(sql, [nome, preco, imagem, esgotado, catId], (err) => {
+        db.query('INSERT INTO produtos (nome, preco, imagem, esgotado, categoria_id) VALUES (?, ?, ?, ?, ?)', [nome, preco, imagem, esgotadoBit, catId], (err) => {
             if (err) return res.status(500).json(err);
             res.json({ success: true });
         });
     }
 });
 
-// Deletar Produto
 app.delete('/api/admin/produtos/:id', (req, res) => {
     db.query('DELETE FROM produtos WHERE id = ?', [req.params.id], (err) => {
         if (err) return res.status(500).json(err);
@@ -138,5 +148,9 @@ app.delete('/api/admin/produtos/:id', (req, res) => {
     });
 });
 
-// Iniciar
-app.listen(3000, () => console.log('🚀 Servidor API rodando na porta 3000'));
+// Configuração para Vercel
+if (require.main === module) {
+    app.listen(3000, () => console.log('🚀 Rodando localmente em http://localhost:3000'));
+}
+
+module.exports = app;
