@@ -1,30 +1,21 @@
-// admin.js
+// admin.js - VERSÃO INTEGRADA COM API
 
-// 1. VERIFICAÇÃO DE SEGURANÇA
+const API_URL = 'http://localhost:3000/api';
+
+// 1. SEGURANÇA
 const usuario = JSON.parse(localStorage.getItem('soparia_sessao'));
 if (!usuario || usuario.tipo !== 'adm') {
-    alert('Acesso negado. Faça login como administrador.');
+    alert('Acesso restrito.');
     window.location.href = 'index.html';
 }
 
-// 2. CARREGAMENTO DE DADOS
-let estoque = JSON.parse(localStorage.getItem('soparia_estoque')) || {};
-let pedidosPendentes = JSON.parse(localStorage.getItem('soparia_pedidos_pendentes')) || [];
-let historicoVendas = JSON.parse(localStorage.getItem('soparia_historico_vendas')) || [];
-let usuarios = JSON.parse(localStorage.getItem('soparia_usuarios')) || [];
-
-// 3. NAVEGAÇÃO (TABS DA SIDEBAR)
+// 2. NAVEGAÇÃO
 document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        // Remove classe ativa de todos
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.admin-section-view').forEach(s => s.classList.remove('active'));
-        
-        // Ativa o clicado
-        e.currentTarget.classList.add('active'); // Use currentTarget para pegar o botão, não o ícone
-        const targetId = e.currentTarget.dataset.target;
-        document.getElementById(targetId).classList.add('active');
-        
+        e.currentTarget.classList.add('active');
+        document.getElementById(e.currentTarget.dataset.target).classList.add('active');
         atualizarViews();
     });
 });
@@ -34,81 +25,91 @@ document.getElementById('btn-sair-admin').addEventListener('click', () => {
     window.location.href = 'index.html';
 });
 
-// --- SEÇÃO 1: GESTÃO DE MENU ---
+// --- FUNÇÕES DE API ---
 
-function renderizarTabelaProdutos() {
+// 1. MENU (PRODUTOS)
+async function renderizarTabelaProdutos() {
     const tbody = document.getElementById('lista-produtos-admin');
-    tbody.innerHTML = '';
+    tbody.innerHTML = '<tr><td colspan="5">Carregando...</td></tr>';
     
-    for (const [id, item] of Object.entries(estoque)) {
-        const tr = document.createElement('tr');
-        const status = item.esgotado ? '<span class="sold-out-box">SOLD OUT</span>' : '<span style="color:green">Disponível</span>';
+    try {
+        const res = await fetch(`${API_URL}/produtos`);
+        const produtos = await res.json();
         
-        tr.innerHTML = `
-            <td><img src="${item.imagem}" width="50" height="30" style="object-fit:cover; border-radius:4px;"></td>
-            <td>${item.nome}</td>
-            <td>R$ ${item.preco.toFixed(2)}</td>
-            <td>${status}</td>
-            <td>
-                <button class="btn-acao btn-editar" onclick="editarProduto('${id}')"><i class="bi bi-pencil"></i></button>
-                <button class="btn-acao btn-excluir" onclick="removerProduto('${id}')"><i class="bi bi-trash"></i></button>
-            </td>
-        `;
-        tbody.appendChild(tr);
+        tbody.innerHTML = '';
+        produtos.forEach(item => {
+            const isSoldOut = Boolean(item.esgotado);
+            const status = isSoldOut ? '<span class="sold-out-box">SOLD OUT</span>' : '<span style="color:green">Disponível</span>';
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td><img src="${item.imagem}" width="50" height="30" style="object-fit:cover;"></td>
+                    <td>${item.nome}</td>
+                    <td>R$ ${parseFloat(item.preco).toFixed(2)}</td>
+                    <td>${status}</td>
+                    <td>
+                        <button class="btn-acao btn-editar" onclick='preencherEdicao(${JSON.stringify(item)})'><i class="bi bi-pencil"></i></button>
+                        <button class="btn-acao btn-excluir" onclick="deletarProduto(${item.id})"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (e) {
+        console.error(e);
+        tbody.innerHTML = '<tr><td colspan="5" style="color:red">Erro ao carregar produtos.</td></tr>';
     }
 }
 
-document.getElementById('btn-salvar-produto').addEventListener('click', () => {
-    // Gera ID se não existir (Edição vs Novo)
-    const idExistente = document.getElementById('edit-id').value;
-    const id = idExistente ? idExistente : 'prod-' + Date.now();
-    
-    const nome = document.getElementById('prod-nome').value;
-    const preco = parseFloat(document.getElementById('prod-preco').value);
-    
-    if(!nome || isNaN(preco)) return alert('Preencha nome e preço!');
-
+document.getElementById('btn-salvar-produto').addEventListener('click', async () => {
+    const id = document.getElementById('edit-id').value;
     const produto = {
-        nome: nome,
-        preco: preco,
+        id: id ? parseInt(id) : null,
+        nome: document.getElementById('prod-nome').value,
+        preco: document.getElementById('prod-preco').value,
         categoria: document.getElementById('prod-categoria').value,
-        imagem: document.getElementById('prod-img').value || 'https://via.placeholder.com/150',
-        esgotado: document.getElementById('prod-soldout').checked,
-        estoque: 999 // Ignorado, usamos booleano
+        imagem: document.getElementById('prod-img').value,
+        esgotado: document.getElementById('prod-soldout').checked
     };
 
-    estoque[id] = produto;
-    localStorage.setItem('soparia_estoque', JSON.stringify(estoque));
-    alert('Produto Salvo com Sucesso!');
-    limparFormProduto();
-    renderizarTabelaProdutos();
+    try {
+        const res = await fetch(`${API_URL}/admin/produtos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(produto)
+        });
+        if (res.ok) {
+            alert('Produto salvo!');
+            limparForm();
+            renderizarTabelaProdutos();
+        } else {
+            alert('Erro ao salvar.');
+        }
+    } catch (e) { alert('Erro de conexão.'); }
 });
 
-// Funções globais para serem chamadas pelo HTML onclick
-window.editarProduto = (id) => {
-    const item = estoque[id];
-    if(item) {
-        document.getElementById('edit-id').value = id;
-        document.getElementById('prod-nome').value = item.nome;
-        document.getElementById('prod-preco').value = item.preco;
-        document.getElementById('prod-categoria').value = item.categoria;
-        document.getElementById('prod-img').value = item.imagem;
-        document.getElementById('prod-soldout').checked = item.esgotado === true;
-        
-        // Scroll para o form
-        document.querySelector('.card-dashboard').scrollIntoView({behavior: 'smooth'});
-    }
-};
-
-window.removerProduto = (id) => {
-    if(confirm('Tem certeza que deseja excluir este item?')) {
-        delete estoque[id];
-        localStorage.setItem('soparia_estoque', JSON.stringify(estoque));
+window.deletarProduto = async (id) => {
+    if (!confirm('Excluir este item permanentemente?')) return;
+    try {
+        await fetch(`${API_URL}/admin/produtos/${id}`, { method: 'DELETE' });
         renderizarTabelaProdutos();
-    }
+    } catch (e) { alert('Erro ao excluir.'); }
 };
 
-function limparFormProduto() {
+window.preencherEdicao = (item) => {
+    document.getElementById('edit-id').value = item.id;
+    document.getElementById('prod-nome').value = item.nome;
+    document.getElementById('prod-preco').value = item.preco;
+    document.getElementById('prod-img').value = item.imagem;
+    document.getElementById('prod-soldout').checked = Boolean(item.esgotado);
+    // Seleciona categoria no select (precisa mapear nome)
+    const select = document.getElementById('prod-categoria');
+    for (let i=0; i<select.options.length; i++) {
+        if (select.options[i].text === item.categoria_nome) select.selectedIndex = i;
+    }
+    document.querySelector('.card-dashboard').scrollIntoView({behavior:'smooth'});
+};
+
+function limparForm() {
     document.getElementById('edit-id').value = '';
     document.getElementById('prod-nome').value = '';
     document.getElementById('prod-preco').value = '';
@@ -116,133 +117,111 @@ function limparFormProduto() {
     document.getElementById('prod-soldout').checked = false;
 }
 
-// --- SEÇÃO 2: NOTIFICAÇÕES (PEDIDOS) ---
+// 2. PEDIDOS E NOTIFICAÇÕES
+let todosPedidos = []; // Cache para dashboard
+
+async function carregarPedidos() {
+    try {
+        const res = await fetch(`${API_URL}/admin/pedidos`);
+        todosPedidos = await res.json();
+        renderizarNotificacoes();
+        renderizarDashboard();
+    } catch (e) { console.error('Erro pedidos', e); }
+}
 
 function renderizarNotificacoes() {
     const container = document.getElementById('lista-pedidos-pendentes');
-    container.innerHTML = '';
+    // Filtra apenas os pendentes
+    const pendentes = todosPedidos.filter(p => p.status === 'pendente');
     
-    if (pedidosPendentes.length === 0) {
-        container.innerHTML = '<p style="padding:20px; text-align:center; color:#666;">Nenhum pedido pendente no momento.</p>';
+    container.innerHTML = '';
+    if (pendentes.length === 0) {
+        container.innerHTML = '<p style="padding:20px; text-align:center;">Sem novos pedidos.</p>';
         return;
     }
 
-    pedidosPendentes.forEach((pedido, index) => {
+    pendentes.forEach(p => {
         const card = document.createElement('div');
         card.className = 'card-dashboard';
-        
-        let listaItensHTML = pedido.itens.map(i => `<li>${i.quantidade}x ${i.nome}</li>`).join('');
-        
         card.innerHTML = `
-            <div style="border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:10px;">
-                <h4>Pedido #${index + 1}</h4>
-                <small>${new Date(pedido.data).toLocaleString()}</small>
-            </div>
-            <p><strong>Cliente:</strong> ${pedido.cliente} (${pedido.email})</p>
-            <p><strong>Endereço:</strong> ${pedido.endereco}</p>
-            <p><strong>Total:</strong> R$ ${pedido.total.toFixed(2)} via <strong>${pedido.metodo}</strong></p>
-            
-            <div style="background:#f9f9f9; padding:10px; margin:10px 0; border-radius:5px;">
-                <strong>Itens:</strong>
-                <ul style="padding-left:20px; margin:5px 0;">${listaItensHTML}</ul>
-            </div>
-
-            <div style="margin-top: 10px; padding: 10px; background: #e3f2fd; border-radius:5px; text-align:center;">
-                <i class="bi bi-file-earmark-image"></i> 
-                <strong>Comprovante:</strong> <span style="color: blue;">Visualizar (Simulado)</span>
-            </div>
-            
-            <button class="btn-acao btn-aprovar" style="margin-top: 15px; width: 100%; padding:10px;" onclick="aprovarPedido(${index})">
-                <i class="bi bi-check-circle-fill"></i> Confirmar Entrega
+            <h4>Pedido #${p.id} - ${p.cliente_nome}</h4>
+            <p><strong>Valor:</strong> R$ ${parseFloat(p.total).toFixed(2)} (${p.metodo_pagamento})</p>
+            <p><strong>Endereço:</strong> ${p.endereco_entrega}</p>
+            <small>${new Date(p.data_pedido).toLocaleString()}</small>
+            <button class="btn-acao btn-aprovar" style="width:100%; margin-top:10px;" onclick="aprovarPedido(${p.id})">
+                <i class="bi bi-check-circle"></i> Aprovar / Entregar
             </button>
         `;
         container.appendChild(card);
     });
 }
 
-window.aprovarPedido = (index) => {
-    const pedido = pedidosPendentes[index];
-    
-    // Normaliza a data para string YYYY-MM-DD para facilitar filtro
-    pedido.dataFiltro = new Date().toISOString().split('T')[0]; 
-    
-    historicoVendas.push(pedido);
-    pedidosPendentes.splice(index, 1); // Remove dos pendentes
-    
-    localStorage.setItem('soparia_pedidos_pendentes', JSON.stringify(pedidosPendentes));
-    localStorage.setItem('soparia_historico_vendas', JSON.stringify(historicoVendas));
-    
-    alert('Pedido aprovado e arquivado no histórico!');
-    renderizarNotificacoes();
+window.aprovarPedido = async (id) => {
+    try {
+        await fetch(`${API_URL}/admin/pedidos/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'entregue' })
+        });
+        alert('Pedido marcado como entregue!');
+        carregarPedidos(); // Recarrega listas
+    } catch (e) { alert('Erro ao atualizar status.'); }
 };
 
-// --- SEÇÃO 3: DASHBOARD ---
-
+// 3. DASHBOARD
 function renderizarDashboard() {
     const dataFiltro = document.getElementById('filtro-data').value;
-    if (!dataFiltro) return;
-
-    // Filtra vendas pela data (ou dataFiltro salva, ou substring da data ISO)
-    const vendasDoDia = historicoVendas.filter(v => {
-        const dataVenda = v.dataFiltro || v.data.split('T')[0];
-        return dataVenda === dataFiltro;
-    });
     
-    const total = vendasDoDia.reduce((acc, curr) => acc + curr.total, 0);
-    const qtdPedidos = vendasDoDia.length;
+    // Filtra pedidos entregues na data selecionada
+    const vendas = todosPedidos.filter(p => {
+        const dataP = p.data_pedido.split('T')[0];
+        return p.status === 'entregue' && dataP === dataFiltro;
+    });
 
+    const total = vendas.reduce((acc, curr) => acc + parseFloat(curr.total), 0);
+    
     document.getElementById('dash-total').textContent = `R$ ${total.toFixed(2)}`;
-    document.getElementById('dash-qtd').textContent = qtdPedidos;
+    document.getElementById('dash-qtd').textContent = vendas.length;
 
     const lista = document.getElementById('dash-lista-vendas');
     lista.innerHTML = '';
-    
-    if(vendasDoDia.length === 0) {
-        lista.innerHTML = '<p>Sem vendas nesta data.</p>';
-    } else {
-        vendasDoDia.forEach(v => {
-            lista.innerHTML += `
-            <li class="carrinho-item" style="border-bottom:1px solid #eee; padding:10px 0;">
-                <div>
-                    <strong>${v.cliente}</strong><br>
-                    <small>${v.metodo}</small>
-                </div>
-                <div style="font-weight:bold; color:var(--cor-principal);">R$ ${v.total.toFixed(2)}</div>
+    vendas.forEach(v => {
+        lista.innerHTML += `
+            <li class="carrinho-item">
+                <span>${v.cliente_nome}</span>
+                <strong>R$ ${parseFloat(v.total).toFixed(2)}</strong>
             </li>`;
-        });
-    }
-}
-
-// Configura data de hoje como padrão
-const hoje = new Date().toISOString().split('T')[0];
-document.getElementById('filtro-data').value = hoje;
-document.getElementById('filtro-data').addEventListener('change', renderizarDashboard);
-
-// --- SEÇÃO 4: USUÁRIOS ---
-
-function renderizarUsuarios() {
-    const tbody = document.getElementById('lista-usuarios-admin');
-    tbody.innerHTML = '';
-    
-    usuarios.forEach(u => {
-        tbody.innerHTML += `
-            <tr>
-                <td>${u.nome}</td>
-                <td>${u.email}</td>
-                <td>${u.endereco ? u.endereco : '<span style="color:#999">Não cadastrado</span>'}</td>
-                <td>${u.tipo === 'adm' ? '<strong>ADMIN</strong>' : 'Cliente'}</td>
-            </tr>
-        `;
     });
 }
 
-// --- INICIALIZAÇÃO ---
+document.getElementById('filtro-data').value = new Date().toISOString().split('T')[0];
+document.getElementById('filtro-data').addEventListener('change', renderizarDashboard);
+
+// 4. USUÁRIOS
+async function renderizarUsuarios() {
+    const tbody = document.getElementById('lista-usuarios-admin');
+    try {
+        const res = await fetch(`${API_URL}/admin/usuarios`);
+        const users = await res.json();
+        
+        tbody.innerHTML = '';
+        users.forEach(u => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${u.nome}</td>
+                    <td>${u.email}</td>
+                    <td>${u.endereco || '-'}</td>
+                    <td>${u.tipo}</td>
+                </tr>`;
+        });
+    } catch (e) { console.error(e); }
+}
+
+// Inicialização
 function atualizarViews() {
     renderizarTabelaProdutos();
-    renderizarNotificacoes();
-    renderizarDashboard();
+    carregarPedidos();
     renderizarUsuarios();
 }
 
-// Chama na carga da página
 atualizarViews();

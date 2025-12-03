@@ -1,28 +1,15 @@
-// --- CONFIGURAÇÃO INICIAL E DADOS ---
+// script.js - VERSÃO COM INTEGRAÇÃO DE API (BACKEND)
 
-// Carrega Estoque (Sincronizado com Admin)
-let estoque = JSON.parse(localStorage.getItem('soparia_estoque')) || {
-    'sopa-frango': { nome: 'Sopa de Frango com Legumes', categoria: 'Sopas e Pratos', preco: 25.00, esgotado: false, imagem: 'assets/sopa1.jpg' },
-    'sopa-carne': { nome: 'Sopa de Carne com Mandioca', categoria: 'Sopas e Pratos', preco: 28.00, esgotado: false, imagem: 'assets/sopa2.jpg' },
-    'sopa-mocoto': { nome: 'Sopa de Mocotó Especial', categoria: 'Sopas e Pratos', preco: 35.00, esgotado: false, imagem: 'assets/sopa3.jpg' },
-    'lasanha': { nome: 'Lasanha à Bolonhesa (Prato)', categoria: 'Sopas e Pratos', preco: 30.00, esgotado: false, imagem: 'assets/lasanha.jpg' },
-    'suco': { nome: 'Suco Natural (Laranja/Abacaxi)', categoria: 'Bebidas', preco: 8.00, esgotado: false, imagem: 'assets/suco.jpg' },
-    'refri': { nome: 'Refrigerante Lata (Diversos)', categoria: 'Bebidas', preco: 7.00, esgotado: false, imagem: 'assets/refri.jpg' },
-    'torta': { nome: 'Fatia de Torta Holandesa', categoria: 'Sobremesas', preco: 12.00, esgotado: false, imagem: 'assets/torta.jpg' },
-    'bolo': { nome: 'Bolo de Chocolate Vulcão', categoria: 'Sobremesas', preco: 15.00, esgotado: false, imagem: 'assets/bolo.jpg' }
-};
+// Configuração da API
+const API_URL = 'http://localhost:3000/api';
 
-// Dados de Usuários
-let usuarios = JSON.parse(localStorage.getItem('soparia_usuarios')) || [
-    { nome: 'Administrador', email: 'adm@soparia.com', senha: '08032004', tipo: 'adm', endereco: '' }
-];
-
-let usuarioAtual = JSON.parse(localStorage.getItem('soparia_sessao')) || null;
+// Estado Global
+let usuarioAtual = JSON.parse(localStorage.getItem('soparia_sessao')) || null; // Sessão mantém no local para persistência rápida
 let carrinho = [];
 const TAXA_ENTREGA = 3.00;
 
-// Seleção de Elementos do DOM
-const menuSection = document.getElementById('menu');
+// Elementos DOM
+const menuSection = document.getElementById('menu-content'); // Atenção ao ID no HTML
 const listaCarrinho = document.getElementById('lista-carrinho');
 const totalCarrinhoSpan = document.getElementById('total-carrinho');
 const contadorCarrinhoSpan = document.getElementById('contador-carrinho');
@@ -33,337 +20,288 @@ const toastContainer = document.getElementById('toast-container');
 const btnLoginPerfil = document.getElementById('btn-login-perfil');
 const textoLogin = document.getElementById('texto-login');
 
-// --- FUNÇÕES DE SISTEMA (AUTH/DADOS) ---
+// --- 1. RENDERIZAÇÃO DO MENU (VIA API) ---
+async function renderizarMenu() {
+    try {
+        const response = await fetch(`${API_URL}/produtos`);
+        const produtos = await response.json();
 
-function salvarDados() {
-    localStorage.setItem('soparia_estoque', JSON.stringify(estoque));
-    localStorage.setItem('soparia_usuarios', JSON.stringify(usuarios));
-    if (usuarioAtual) localStorage.setItem('soparia_sessao', JSON.stringify(usuarioAtual));
-    else localStorage.removeItem('soparia_sessao');
+        // Agrupamento por Categoria
+        const menuAgrupado = {};
+        produtos.forEach(item => {
+            // O JOIN no SQL retorna categoria_nome, vamos usar isso
+            const cat = item.categoria_nome || 'Outros'; 
+            if (!menuAgrupado[cat]) menuAgrupado[cat] = [];
+            menuAgrupado[cat].push(item);
+        });
+
+        // Limpa e Renderiza (igual ao anterior, mas com dados do banco)
+        menuSection.innerHTML = '';
+        const navContainer = document.getElementById('menu-nav');
+        if(navContainer) navContainer.innerHTML = '';
+
+        for (const [categoria, itens] of Object.entries(menuAgrupado)) {
+            const catId = 'cat-' + categoria.replace(/\s+/g, '-').toLowerCase();
+
+            // Botão Nav
+            if(navContainer) {
+                const btn = document.createElement('button');
+                btn.className = 'cat-btn';
+                btn.textContent = categoria;
+                btn.onclick = () => document.getElementById(catId).scrollIntoView({ behavior: 'smooth', block: 'center' });
+                navContainer.appendChild(btn);
+            }
+
+            // Título
+            const h3 = document.createElement('h3');
+            h3.className = 'categoria-titulo';
+            h3.id = catId;
+            h3.textContent = categoria;
+            menuSection.appendChild(h3);
+
+            // Grid
+            const grid = document.createElement('div');
+            grid.className = 'menu-grid';
+            menuSection.appendChild(grid);
+
+            itens.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'produto-card';
+                // Converte booleano do MySQL (0 ou 1) para true/false
+                const isSoldOut = Boolean(item.esgotado);
+                
+                card.innerHTML = `
+                    <img src="${item.imagem}" class="produto-imagem" style="${isSoldOut ? 'filter: grayscale(100%); opacity:0.7' : ''}" alt="${item.nome}">
+                    <div class="produto-info">
+                        <div>
+                            <h4 class="produto-nome">${item.nome}</h4>
+                            <p class="produto-descricao">${item.descricao || 'Delicioso item do cardápio.'}</p>
+                        </div>
+                        <div>
+                            <div class="produto-footer">
+                                <span class="produto-preco">R$ ${parseFloat(item.preco).toFixed(2)}</span>
+                                <span class="produto-estoque ${isSoldOut ? 'esgotado' : 'disponivel'}">${isSoldOut ? 'Esgotado' : 'Disponível'}</span>
+                            </div>
+                            <button class="adicionar-btn" onclick="adicionarAoCarrinho(${item.id}, '${item.nome}', ${item.preco}, ${isSoldOut})" ${isSoldOut ? 'disabled' : ''}>
+                                ${isSoldOut ? 'SOLD OUT' : '➕ Adicionar'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+    } catch (error) {
+        console.error('Erro ao carregar menu:', error);
+        menuSection.innerHTML = '<p style="text-align:center; color:red">Erro ao carregar cardápio. Verifique se o servidor está rodando.</p>';
+    }
+}
+
+// --- 2. AUTH (VIA API) ---
+async function login(email, senha) {
+    try {
+        const response = await fetch(`${API_URL}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, senha })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            usuarioAtual = data.user;
+            localStorage.setItem('soparia_sessao', JSON.stringify(usuarioAtual));
+            
+            if (usuarioAtual.tipo === 'adm') window.location.href = 'admin.html';
+            else {
+                verificarSessao();
+                document.getElementById('modal-login').style.display = 'none';
+                mostrarNotificacao(`Bem-vindo, ${usuarioAtual.nome.split(' ')[0]}!`, 'sucesso');
+            }
+        } else {
+            mostrarNotificacao(data.message || 'Erro no login', 'erro');
+        }
+    } catch (error) {
+        mostrarNotificacao('Erro de conexão com o servidor.', 'erro');
+    }
+}
+
+async function cadastrar(nome, email, senha, rua, num, bairro, comp) {
+    if (senha.length < 8) return mostrarNotificacao('Senha deve ter mín. 8 caracteres.', 'erro');
+    
+    const enderecoCompleto = `${rua}, ${num} - ${bairro} ${comp ? '('+comp+')' : ''}`;
+
+    try {
+        const response = await fetch(`${API_URL}/cadastro`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nome, email, senha, endereco: enderecoCompleto })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            mostrarNotificacao('Conta criada! Faça login.', 'sucesso');
+            // Opcional: Já logar direto
+            login(email, senha);
+        } else {
+            mostrarNotificacao(data.message || 'Erro ao cadastrar.', 'erro');
+        }
+    } catch (error) {
+        mostrarNotificacao('Erro de conexão.', 'erro');
+    }
 }
 
 function verificarSessao() {
     if (usuarioAtual) {
         textoLogin.textContent = `Olá, ${usuarioAtual.nome.split(' ')[0]}`;
-        
-        // Se for ADM, redireciona o comportamento do botão
         if (usuarioAtual.tipo === 'adm') {
             btnLoginPerfil.onclick = () => window.location.href = 'admin.html';
             textoLogin.textContent = "Painel Admin";
-            return;
         } else {
-            // Se for cliente, abre modal de perfil
             btnLoginPerfil.onclick = () => {
                 document.getElementById('perfil-nome').textContent = usuarioAtual.nome;
                 document.getElementById('perfil-email').textContent = usuarioAtual.email;
-                document.getElementById('perfil-tipo').textContent = "Cliente";
                 document.getElementById('perfil-endereco').value = usuarioAtual.endereco || '';
                 document.getElementById('modal-perfil').style.display = 'block';
             };
         }
-        
-        // Preenche e-mail no checkout se existir o campo
-        const inputEmail = document.getElementById('email-cliente');
-        if (inputEmail) inputEmail.value = usuarioAtual.email;
-        
+        const emailInput = document.getElementById('email-cliente');
+        if(emailInput) emailInput.value = usuarioAtual.email;
     } else {
         textoLogin.textContent = 'Entrar';
         btnLoginPerfil.onclick = () => document.getElementById('modal-login').style.display = 'block';
     }
 }
 
-function login(email, senha) {
-    const user = usuarios.find(u => u.email === email && u.senha === senha);
-    if (user) {
-        usuarioAtual = user;
-        salvarDados();
-        
-        if (user.tipo === 'adm') {
-            window.location.href = 'admin.html';
-        } else {
-            verificarSessao();
-            document.getElementById('modal-login').style.display = 'none';
-            mostrarNotificacao(`Bem-vindo, ${user.nome}!`, 'sucesso');
-        }
-    } else {
-        mostrarNotificacao('E-mail ou senha incorretos.', 'erro');
-    }
-}
-
-function cadastrar(nome, email, senha, endereco) {
-    if (usuarios.find(u => u.email === email)) {
-        return mostrarNotificacao('E-mail já cadastrado.', 'erro');
-    }
-    if (senha.length < 8) {
-        return mostrarNotificacao('A senha deve ter no mínimo 8 caracteres.', 'erro');
-    }
-
-    const novoUser = { nome, email, senha, tipo: 'cliente', endereco };
-    usuarios.push(novoUser);
-    usuarioAtual = novoUser;
-    
-    salvarDados();
-    verificarSessao();
-    document.getElementById('modal-login').style.display = 'none';
-    mostrarNotificacao('Conta criada com sucesso!', 'sucesso');
-}
-
 function logout() {
     usuarioAtual = null;
-    salvarDados();
+    localStorage.removeItem('soparia_sessao');
     verificarSessao();
     document.getElementById('modal-perfil').style.display = 'none';
-    
-    // Limpa campos
-    const formCheckout = document.getElementById('checkout-form');
-    if(formCheckout) formCheckout.reset();
-    
-    mostrarNotificacao('Você saiu da conta.', 'info');
+    mostrarNotificacao('Saiu da conta.', 'info');
 }
 
-// --- RENDERIZAÇÃO DO MENU ---
-
-function renderizarMenu() {
-    // Agrupa por categoria
-    const menuAgrupado = {};
-    for (const [id, item] of Object.entries(estoque)) {
-        if (!menuAgrupado[item.categoria]) menuAgrupado[item.categoria] = [];
-        menuAgrupado[item.categoria].push({ id, ...item });
-    }
-
-    menuSection.innerHTML = '';
-    const container = document.createElement('div');
-    container.classList.add('container');
-    menuSection.appendChild(container);
-    
-    // Título Principal
-    const h2 = document.createElement('h2');
-    h2.className = 'section-titulo';
-    h2.innerHTML = '<i class="bi bi-list-stars"></i> Nosso Menu';
-    container.appendChild(h2);
-
-    for (const [categoria, itens] of Object.entries(menuAgrupado)) {
-        const h3 = document.createElement('h3');
-        h3.className = 'categoria-titulo';
-        h3.textContent = categoria;
-        container.appendChild(h3);
-
-        const grid = document.createElement('div');
-        grid.classList.add('menu-grid');
-        container.appendChild(grid);
-
-        itens.forEach(item => {
-            const card = document.createElement('div');
-            card.classList.add('produto-card');
-            
-            // Lógica "Sold Out"
-            const isSoldOut = item.esgotado === true;
-            const btnTexto = isSoldOut ? 'SOLD OUT' : '➕ Adicionar';
-            const classeStatus = isSoldOut ? 'esgotado' : 'disponivel';
-            const statusTexto = isSoldOut ? 'Esgotado' : 'Disponível';
-            
-            card.innerHTML = `
-                <img src="${item.imagem}" class="produto-imagem" style="${isSoldOut ? 'filter: grayscale(100%);' : ''}" alt="${item.nome}">
-                <div class="produto-info">
-                    <h4 class="produto-nome">${item.nome}</h4>
-                    <p class="produto-descricao">Delicioso item feito com carinho.</p>
-                    <div class="produto-footer">
-                        <span class="produto-preco">R$ ${item.preco.toFixed(2)}</span>
-                        <span class="produto-estoque ${classeStatus}">${statusTexto}</span>
-                    </div>
-                    <button class="adicionar-btn" data-id="${item.id}" ${isSoldOut ? 'disabled' : ''}>
-                        ${btnTexto}
-                    </button>
-                </div>
-            `;
-            grid.appendChild(card);
-        });
-    }
-}
-
-// --- CARRINHO E CHECKOUT ---
-
+// --- 3. CARRINHO (LOCAL) ---
+// O carrinho continua local até a hora de fechar a compra
 function atualizarCarrinho() {
     listaCarrinho.innerHTML = '';
-    
-    // Verifica tipo de entrega selecionado no form
     const inputEntrega = document.querySelector('input[name="tipo_entrega"]:checked');
     const tipoEntrega = inputEntrega ? inputEntrega.value : 'entrega';
-    
     let total = 0;
     let totalItens = 0;
 
-    if (carrinho.length === 0) {
-        listaCarrinho.innerHTML = '<li style="text-align:center; padding:20px;">O carrinho está vazio.</li>';
-    } else {
+    if (carrinho.length === 0) listaCarrinho.innerHTML = '<li style="text-align:center; padding:20px;">Vazio...</li>';
+    else {
         carrinho.forEach(item => {
             const li = document.createElement('li');
             li.classList.add('carrinho-item');
             li.innerHTML = `
-                <div class="item-info">
-                    <div class="item-nome">${item.quantidade}x ${item.nome}</div>
-                </div>
+                <div class="item-info"><div class="item-nome">${item.quantidade}x ${item.nome}</div></div>
                 <div class="item-acoes">
                     <span class="item-preco">R$ ${(item.preco * item.quantidade).toFixed(2)}</span>
-                    <button class="btn-remover" data-id="${item.id}"><i class="bi bi-trash"></i></button>
+                    <button class="btn-remover" onclick="removerDoCarrinho(${item.id})"><i class="bi bi-trash"></i></button>
                 </div>`;
             listaCarrinho.appendChild(li);
-            
             total += item.preco * item.quantidade;
             totalItens += item.quantidade;
         });
     }
 
-    // Adiciona taxa se for entrega e tiver itens
-    if (tipoEntrega === 'entrega' && total > 0) {
-        total += TAXA_ENTREGA;
-    }
-
+    if (tipoEntrega === 'entrega' && total > 0) total += TAXA_ENTREGA;
     totalCarrinhoSpan.textContent = total.toFixed(2);
-    contadorCarrinhoSpan.textContent = totalItens;
+    if(contadorCarrinhoSpan) contadorCarrinhoSpan.textContent = totalItens;
 }
 
-function adicionarAoCarrinho(produtoId) {
-    const produto = estoque[produtoId];
+// Nota: A função adicionar agora recebe parametros diretos do HTML gerado
+function adicionarAoCarrinho(id, nome, preco, esgotado) {
+    if (esgotado) return mostrarNotificacao('Item esgotado.', 'erro');
+
+    const itemExistente = carrinho.find(item => item.id === id);
+    if (itemExistente) itemExistente.quantidade++;
+    else carrinho.push({ id, nome, preco: parseFloat(preco), quantidade: 1 });
     
-    // Verifica se existe e se não está esgotado
-    if (!produto || produto.esgotado) {
-        return mostrarNotificacao('Item indisponível no momento.', 'erro');
+    atualizarCarrinho();
+    mostrarNotificacao(`${nome} adicionado!`, 'sucesso');
+}
+
+window.removerDoCarrinho = (id) => {
+    carrinho = carrinho.filter(item => item.id !== id);
+    atualizarCarrinho();
+};
+
+// --- 4. CHECKOUT (ENVIA PARA O BANCO) ---
+async function finalizarPedidoReal(metodo) {
+    const inputEntrega = document.querySelector('input[name="tipo_entrega"]:checked').value;
+    const origem = document.querySelector('input[name="origem_endereco"]:checked')?.value || 'novo';
+    let endFinal = 'Retirada no Balcão';
+
+    if (inputEntrega === 'entrega') {
+        if (origem === 'cadastrado') endFinal = usuarioAtual.endereco;
+        else {
+            const r = document.getElementById('endereco-rua').value;
+            const n = document.getElementById('endereco-numero').value;
+            const b = document.getElementById('endereco-bairro').value;
+            const c = document.getElementById('endereco-complemento').value;
+            endFinal = `${r}, ${n} - ${b} ${c ? '('+c+')' : ''}`;
+        }
     }
 
-    const itemExistente = carrinho.find(item => item.id === produtoId);
-    
-    if (itemExistente) {
-        itemExistente.quantidade++;
-    } else {
-        carrinho.push({ 
-            id: produtoId, 
-            nome: produto.nome, 
-            preco: produto.preco, 
-            quantidade: 1 
+    const pedidoData = {
+        usuario_id: usuarioAtual.id,
+        total: parseFloat(totalCarrinhoSpan.textContent),
+        metodo: metodo,
+        endereco: endFinal,
+        itens: carrinho
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/pedidos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(pedidoData)
         });
+        const result = await response.json();
+
+        if (result.success) {
+            carrinho = [];
+            atualizarCarrinho();
+            modalCarrinho.style.display = 'none';
+            modalPix.style.display = 'none';
+            modalConfirmacao.style.display = 'block';
+            document.getElementById('checkout-form').reset();
+        } else {
+            mostrarNotificacao('Erro ao processar pedido.', 'erro');
+        }
+    } catch (error) {
+        mostrarNotificacao('Erro de conexão ao finalizar.', 'erro');
     }
-    
-    atualizarCarrinho();
-    mostrarNotificacao(`${produto.nome} adicionado!`, 'sucesso');
 }
 
-function removerDoCarrinho(produtoId) {
-    carrinho = carrinho.filter(item => item.id !== produtoId);
-    atualizarCarrinho();
-}
-
+// Listener Wrapper para Finalizar
 function iniciarProcessoCheckout(e) {
     e.preventDefault();
-    
-    // 1. Bloqueio de Login
     if (!usuarioAtual) {
         modalCarrinho.style.display = 'none';
         document.getElementById('modal-login').style.display = 'block';
-        return mostrarNotificacao('Faça login para finalizar a compra.', 'erro');
+        return mostrarNotificacao('Faça login para continuar.', 'erro');
     }
+    if (carrinho.length === 0) return mostrarNotificacao('Carrinho vazio!', 'info');
 
-    // 2. Carrinho Vazio
-    if (carrinho.length === 0) {
-        return mostrarNotificacao('Seu carrinho está vazio!', 'info');
-    }
-
-    // 3. Método de Pagamento (Define fluxo)
-    const metodoPagamento = document.getElementById('metodo-pagamento').value;
-    
-    if (!metodoPagamento) {
-        return mostrarNotificacao('Selecione um método de pagamento.', 'erro');
-    }
-
-    // Validação de Endereço (se for entrega)
-    const inputEntrega = document.querySelector('input[name="tipo_entrega"]:checked').value;
-    const origemEndereco = document.querySelector('input[name="origem_endereco"]:checked')?.value || 'novo';
-
-    // Se escolheu endereço cadastrado, valida se existe
-    if (inputEntrega === 'entrega' && origemEndereco === 'cadastrado') {
-        if (!usuarioAtual.endereco || usuarioAtual.endereco.trim() === '') {
-            mostrarNotificacao('Perfil sem endereço. Escolha "Outro endereço".', 'erro');
-            return;
-        }
-    }
-
-    // Validação do FormHTML (apenas se for novo endereço)
-    if (inputEntrega === 'entrega' && origemEndereco === 'novo') {
-        if (!document.getElementById('checkout-form').checkValidity()) {
-            return mostrarNotificacao('Preencha o endereço completo.', 'erro');
-        }
-    }
-
-    // FLUXO: PIX (Abre modal especial)
-    if (metodoPagamento === 'pix') {
+    const metodo = document.getElementById('metodo-pagamento').value;
+    if (metodo === 'pix') {
         modalCarrinho.style.display = 'none';
         modalPix.style.display = 'block';
-        return;
+    } else {
+        finalizarPedidoReal('Dinheiro');
     }
-
-    // FLUXO: DINHEIRO (Finaliza direto)
-    finalizarPedidoReal('Dinheiro');
-}
-
-function finalizarPedidoReal(metodoPagamento) {
-    // Captura dados do endereço para salvar no pedido
-    const inputEntrega = document.querySelector('input[name="tipo_entrega"]:checked').value;
-    const origemEndereco = document.querySelector('input[name="origem_endereco"]:checked')?.value || 'novo';
-    
-    let enderecoFinal = 'Retirada no Balcão';
-    
-    if (inputEntrega === 'entrega') {
-        if (origemEndereco === 'cadastrado') {
-            enderecoFinal = usuarioAtual.endereco;
-        } else {
-            const rua = document.getElementById('endereco-rua').value;
-            const numero = document.getElementById('endereco-numero').value;
-            const bairro = document.getElementById('endereco-bairro').value;
-            const comp = document.getElementById('endereco-complemento').value;
-            enderecoFinal = `${rua}, ${numero} - ${bairro} ${comp ? '('+comp+')' : ''}`;
-        }
-    }
-
-    // Objeto do Pedido
-    const pedido = {
-        cliente: usuarioAtual.nome,
-        email: usuarioAtual.email,
-        itens: [...carrinho], // Cópia do array
-        total: parseFloat(totalCarrinhoSpan.textContent),
-        metodo: metodoPagamento,
-        endereco: enderecoFinal,
-        data: new Date().toISOString()
-    };
-
-    // Salva em "Pedidos Pendentes" (Simulando envio pro servidor)
-    let pendentes = JSON.parse(localStorage.getItem('soparia_pedidos_pendentes')) || [];
-    pendentes.push(pedido);
-    localStorage.setItem('soparia_pedidos_pendentes', JSON.stringify(pendentes));
-
-    // Reset total
-    carrinho = [];
-    atualizarCarrinho();
-    
-    // Fecha modais
-    modalCarrinho.style.display = 'none';
-    modalPix.style.display = 'none';
-    
-    // Abre confirmação
-    modalConfirmacao.style.display = 'block';
-    
-    // Limpa form
-    document.getElementById('checkout-form').reset();
 }
 
 // --- HELPERS E UI ---
-
 function mostrarNotificacao(msg, tipo = 'sucesso') {
     const icones = { sucesso: 'bi-check-circle-fill', erro: 'bi-x-circle-fill', info: 'bi-info-circle-fill' };
     const toast = document.createElement('div');
     toast.className = `toast ${tipo}`;
     toast.innerHTML = `<i class="bi ${icones[tipo]}"></i><span>${msg}</span>`;
     toastContainer.appendChild(toast);
-    
     setTimeout(() => {
         toast.style.animation = 'fadeOutRight 0.5s forwards';
         toast.addEventListener('animationend', () => toast.remove());
@@ -371,54 +309,42 @@ function mostrarNotificacao(msg, tipo = 'sucesso') {
 }
 
 function atualizarVisibilidadeEndereco() {
-    const tipoEntrega = document.querySelector('input[name="tipo_entrega"]:checked').value;
-    const divGrupo = document.getElementById('grupo-endereco');
-    const divOpcaoSalvo = document.getElementById('opcao-endereco-salvo');
-    const txtEnderecoSalvo = document.getElementById('texto-endereco-salvo');
-    const divFormNovo = document.getElementById('form-novo-endereco');
-    
-    const inputsEndereco = [
-        document.getElementById('endereco-rua'),
-        document.getElementById('endereco-numero'),
-        document.getElementById('endereco-bairro')
-    ];
+    const tipo = document.querySelector('input[name="tipo_entrega"]:checked').value;
+    const grupo = document.getElementById('grupo-endereco');
+    const opcaoSalvo = document.getElementById('opcao-endereco-salvo');
+    const txtSalvo = document.getElementById('texto-endereco-salvo');
+    const formNovo = document.getElementById('form-novo-endereco');
+    const inputs = formNovo.querySelectorAll('input');
 
-    if (tipoEntrega === 'retirada') {
-        divGrupo.style.display = 'none';
-        inputsEndereco.forEach(i => i.required = false);
+    if (tipo === 'retirada') {
+        grupo.style.display = 'none';
+        inputs.forEach(i => i.required = false);
         return;
     }
+    grupo.style.display = 'block';
 
-    divGrupo.style.display = 'block';
-
-    // Verifica se usuário tem endereço salvo
-    if (usuarioAtual && usuarioAtual.endereco) {
-        divOpcaoSalvo.style.display = 'flex';
-        txtEnderecoSalvo.textContent = `Salvo: ${usuarioAtual.endereco}`;
-        
-        // Vê qual radio "origem" está marcado
+    if (usuarioAtual && usuarioAtual.endereco && usuarioAtual.endereco.length > 5) {
+        opcaoSalvo.style.display = 'flex';
+        txtSalvo.textContent = `Salvo: ${usuarioAtual.endereco}`;
         const usaSalvo = document.querySelector('input[name="origem_endereco"]:checked')?.value === 'cadastrado';
         
         if (usaSalvo) {
-            divFormNovo.style.display = 'none';
-            txtEnderecoSalvo.style.display = 'block';
-            inputsEndereco.forEach(i => i.required = false);
+            formNovo.style.display = 'none';
+            txtSalvo.style.display = 'block';
+            inputs.forEach(i => i.required = false);
         } else {
-            divFormNovo.style.display = 'flex';
-            txtEnderecoSalvo.style.display = 'none';
-            inputsEndereco.forEach(i => i.required = true);
+            formNovo.style.display = 'flex';
+            txtSalvo.style.display = 'none';
+            inputs.forEach(i => i.required = true);
         }
     } else {
-        // Se não tem salvo, esconde a opção e força manual
-        divOpcaoSalvo.style.display = 'none';
-        divFormNovo.style.display = 'flex';
-        inputsEndereco.forEach(i => i.required = true);
+        opcaoSalvo.style.display = 'none';
+        formNovo.style.display = 'flex';
+        inputs.forEach(i => i.required = true);
     }
 }
 
-// --- EVENT LISTENERS (CRUCIAL: NÃO REMOVA NADA DAQUI) ---
-
-// 1. Auth Forms
+// --- EVENTOS ---
 document.getElementById('form-login').addEventListener('submit', (e) => {
     e.preventDefault();
     login(document.getElementById('login-email').value, document.getElementById('login-senha').value);
@@ -430,11 +356,13 @@ document.getElementById('form-cadastro').addEventListener('submit', (e) => {
         document.getElementById('cad-nome').value,
         document.getElementById('cad-email').value,
         document.getElementById('cad-senha').value,
-        document.getElementById('cad-endereco').value
+        document.getElementById('cad-rua').value,
+        document.getElementById('cad-numero').value,
+        document.getElementById('cad-bairro').value,
+        document.getElementById('cad-complemento').value
     );
 });
 
-// 2. Tabs Auth
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -446,82 +374,39 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     });
 });
 
-// 3. Botões Carrinho/Perfil
 document.getElementById('carrinho-btn').addEventListener('click', () => {
     modalCarrinho.style.display = 'block';
     atualizarVisibilidadeEndereco();
 });
-
 document.getElementById('btn-logout').addEventListener('click', logout);
 
-document.getElementById('btn-atualizar-perfil').addEventListener('click', () => {
-    if(usuarioAtual) {
-        usuarioAtual.endereco = document.getElementById('perfil-endereco').value;
-        const idx = usuarios.findIndex(u => u.email === usuarioAtual.email);
-        if(idx !== -1) usuarios[idx] = usuarioAtual;
-        salvarDados();
-        mostrarNotificacao('Endereço atualizado!', 'sucesso');
-    }
-});
+document.querySelectorAll('.fechar-btn, .btn-voltar').forEach(btn => btn.addEventListener('click', (e) => {
+    const modalId = e.currentTarget.dataset.modal;
+    if(modalId) document.getElementById(modalId).style.display = 'none';
+}));
 
-// 4. Fechar Modais
-document.querySelectorAll('.fechar-btn, .btn-voltar').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        const modalId = e.currentTarget.dataset.modal;
-        if(modalId) document.getElementById(modalId).style.display = 'none';
-    });
-});
+window.onclick = (e) => { if (e.target.classList.contains('modal')) e.target.style.display = 'none'; };
 
-window.onclick = (e) => {
-    if (e.target.classList.contains('modal')) e.target.style.display = 'none';
-};
-
-// 5. Botões "Adicionar" do Menu (Delegação de Evento)
-menuSection.addEventListener('click', (e) => {
-    if (e.target.classList.contains('adicionar-btn')) {
-        adicionarAoCarrinho(e.target.dataset.id);
-    }
-});
-
-// 6. Botões "Remover" do Carrinho (Delegação)
-listaCarrinho.addEventListener('click', (e) => {
-    const btn = e.target.closest('.btn-remover');
-    if (btn) {
-        removerDoCarrinho(btn.dataset.id);
-    }
-});
-
-// 7. Controle do Formulário Checkout (Endereço)
 document.querySelectorAll('input[name="tipo_entrega"]').forEach(r => {
     r.addEventListener('change', () => {
         atualizarCarrinho();
         atualizarVisibilidadeEndereco();
     });
 });
-
-document.querySelectorAll('input[name="origem_endereco"]').forEach(r => {
-    r.addEventListener('change', atualizarVisibilidadeEndereco);
-});
+document.querySelectorAll('input[name="origem_endereco"]').forEach(r => r.addEventListener('change', atualizarVisibilidadeEndereco));
 
 document.getElementById('checkout-form').addEventListener('submit', iniciarProcessoCheckout);
 
-// 8. PIX: Copiar e Enviar Comprovante
 document.getElementById('btn-copiar-pix').addEventListener('click', () => {
-    const codigo = document.getElementById('pix-code');
-    codigo.select();
-    navigator.clipboard.writeText(codigo.value);
-    mostrarNotificacao('Código copiado!', 'sucesso');
+    navigator.clipboard.writeText(document.getElementById('pix-code').value);
+    mostrarNotificacao('Copiado!', 'sucesso');
 });
 
 document.getElementById('btn-enviar-comprovante').addEventListener('click', () => {
-    const file = document.getElementById('comprovante-upload').files[0];
-    if(!file) return mostrarNotificacao('Anexe o comprovante.', 'erro');
-    
-    // Finaliza com método PIX
+    if(!document.getElementById('comprovante-upload').files[0]) return mostrarNotificacao('Anexe o comprovante.', 'erro');
     finalizarPedidoReal('PIX');
 });
 
-// 9. Carrossel
 function iniciarCarrossel() {
     const slides = document.querySelectorAll('.carousel-item');
     if(slides.length === 0) return;
@@ -532,13 +417,9 @@ function iniciarCarrossel() {
         slides[i].classList.add('active');
     }, 5000);
 }
+document.querySelector('.hero-section').addEventListener('click', () => document.getElementById('menu').scrollIntoView({behavior:'smooth'}));
 
-// 10. Scroll Suave Banner
-document.querySelector('.hero-section').addEventListener('click', () => {
-    document.getElementById('menu').scrollIntoView({ behavior: 'smooth' });
-});
-
-// INICIALIZAÇÃO
+// Init
 verificarSessao();
 renderizarMenu();
 atualizarCarrinho();
