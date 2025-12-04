@@ -94,3 +94,5 @@ Todo Pull Request deve passar por uma auditoria mínima contendo:
 - [x] Ausência de dados sensíveis (senhas reais) no código fonte.
 
 > Projeto auditado para a disciplina de GCS.
+> Teste Subindo para a develop
+> Teste 2 para enviar para o professor
